@@ -126,3 +126,14 @@ model Transaction {
   user    User             @relation(fields: [user_id], references: [id])
   session MatchupSession?  @relation(fields: [session_id], references: [id])
 }
+
+model TeamColors {
+  id            String   @id @default(uuid())
+  team_name     String   @unique
+  primary      String
+  secondary    String
+  text         String
+  club_colors  String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @default(now())
+}

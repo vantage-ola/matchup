@@ -1,4 +1,5 @@
 import type { Fixture } from '../types/index.js';
+import { prisma } from '../db/prisma.js';
 
 const BASE_URL = 'https://api.football-data.org/v4';
 
@@ -118,23 +119,29 @@ export async function fetchMatches(
 
   const data = await fetchWithToken<FootballDataResponse>(endpoint);
 
-  return data.matches.map((match) => ({
-    id: crypto.randomUUID(),
-    externalId: String(match.id),
-    homeTeam: match.homeTeam.name,
-    awayTeam: match.awayTeam.name,
-    homeTeamLogo: match.homeTeam.crest,
-    awayTeamLogo: match.awayTeam.crest,
-    league: match.competition?.name ?? competitionCode,
-    kickoffAt: new Date(match.utcDate),
-    status: mapStatus(match.status),
-    realHomeGoals: match.score.fullTime.home,
-    realAwayGoals: match.score.fullTime.away,
-    rawResult: match as unknown as Record<string, unknown>,
-    createdAt: new Date(),
-    homeTeamColors: parseTeamColors(match.homeTeam.name),
-    awayTeamColors: parseTeamColors(match.awayTeam.name),
+  const fixtures = await Promise.all(data.matches.map(async (match) => {
+    const homeColors = await getTeamColors(match.homeTeam.name);
+    const awayColors = await getTeamColors(match.awayTeam.name);
+    return {
+      id: crypto.randomUUID(),
+      externalId: String(match.id),
+      homeTeam: match.homeTeam.name,
+      awayTeam: match.awayTeam.name,
+      homeTeamLogo: match.homeTeam.crest,
+      awayTeamLogo: match.awayTeam.crest,
+      league: match.competition?.name ?? competitionCode,
+      kickoffAt: new Date(match.utcDate),
+      status: mapStatus(match.status),
+      realHomeGoals: match.score.fullTime.home,
+      realAwayGoals: match.score.fullTime.away,
+      rawResult: match as unknown as Record<string, unknown>,
+      createdAt: new Date(),
+      homeTeamColors: homeColors,
+      awayTeamColors: awayColors,
+    };
   }));
+
+  return fixtures;
 }
 
 export async function fetchRealResult(
@@ -256,6 +263,48 @@ function hexFromColorName(colorName: string): string {
   if (colorMap[lower]) return colorMap[lower];
   if (/^#[0-9A-Fa-f]{6}$/.test(colorName)) return colorName;
   return hashColor(colorName);
+}
+
+export async function getTeamColors(teamName: string): Promise<TeamColors> {
+  const cached = await prisma.teamColors.findUnique({ where: { team_name: teamName } });
+  if (cached) {
+    return { primary: cached.primary, secondary: cached.secondary, text: cached.text };
+  }
+
+  let colors = TEAM_COLOR_MAP[teamName];
+  if (!colors) {
+    for (const [key, c] of Object.entries(TEAM_COLOR_MAP)) {
+      if (teamName.includes(key) || key.includes(teamName)) {
+        colors = c;
+        break;
+      }
+    }
+  }
+
+  if (!colors) {
+    colors = { primary: hashColor(teamName), secondary: '#FFFFFF', text: textForBg(hashColor(teamName)) };
+  }
+
+  const rawColors = colors.primary === '#FFFFFF' ? 'White' :
+    Object.entries({
+      '#EF0107': 'Red', '#670E36': 'Claret', '#DA291C': 'Red', '#E30613': 'Red', '#0057B8': 'Blue',
+      '#6C1D45': 'Claret', '#034694': 'Blue', '#1B458F': 'Blue', '#003399': 'Blue',
+      '#0044AA': 'Blue', '#003090': 'Blue', '#C8102E': 'Red', '#F78F1E': 'Orange',
+      '#6CABDD': 'Sky Blue', '#FBE122': 'Yellow', '#241F20': 'Black', '#DD0000': 'Red',
+      '#EE2737': 'Red', '#D71920': 'Red', '#132257': 'Navy', '#7A263A': 'Claret',
+      '#FDB913': 'Gold', '#A50044': 'Red', '#004D98': 'Blue', '#CB3524': 'Red',
+      '#DC052D': 'Red', '#FDE100': 'Yellow', '#FB090B': 'Red', '#010E80': 'Blue',
+      '#000000': 'Black', '#12A0D7': 'Sky Blue', '#8E1F2F': 'Red', '#004170': 'Blue',
+      '#2FAEE0': 'Blue',
+    }).find(([, name]) => colors!.primary.toUpperCase() === name)?.[0] || 'Unknown';
+
+  await prisma.teamColors.upsert({
+    where: { team_name: teamName },
+    create: { team_name: teamName, primary: colors.primary, secondary: colors.secondary, text: colors.text, club_colors: rawColors },
+    update: { primary: colors.primary, secondary: colors.secondary, text: colors.text, club_colors: rawColors, updated_at: new Date() },
+  });
+
+  return colors;
 }
 
 export async function fetchTodayMatches(): Promise<Fixture[]> {
