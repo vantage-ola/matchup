@@ -1,26 +1,21 @@
-import type { GameState, MoveResult, Outcome, MovePhase, Player, GridPosition, Team, GameStatus, MoveType } from './types.js';
+import type { GameState, MoveResult, Outcome, MovePhase, Player, GridPosition, Team, MoveType } from './types.js';
 import {
   initGameState,
   getPlayer,
   getBallCarrier,
   getTeamPlayers,
-  getPlayerAt,
   listFormations,
   getFormation,
   FORMATIONS,
-  GAME_DURATION,
   resetPositions,
 } from './formations.js';
 
 import {
   validateMove,
-  canMoveTo,
   classifyMove,
   checkInterception,
-  getAttackDirection,
-  canTackle,
 } from './moves.js';
-import { isGoalPosition, rowToNum, gridDistance } from './types.js';
+import { gridDistance } from './types.js';
 
 const MOVE_TIME = 10; // seconds per move
 
@@ -219,23 +214,21 @@ export class Engine {
     // ---- UPDATE POSSESSION & MOVE COUNT ----
     if (possessionChange || scored) {
       if (!scored) {
-        // Don't override possession if we already set it in goal handling
         newState.possession =
           newState.possession === 'home' ? 'away' : 'home';
       }
       newState.moveNumber = 1;
       newState.movePhase = 'attack';
+    } else if (moveType === 'run') {
+      // Off-ball runs end your turn. You moved a player, now the opponent reacts.
+      newState.possession =
+        newState.possession === 'home' ? 'away' : 'home';
+      newState.moveNumber = 1;
+      newState.movePhase = 'attack';
     } else {
-      newState.moveNumber++;
-      // After 3 moves, possession flips (shared budget for both teams)
-      if (newState.moveNumber > 3) {
-        newState.possession =
-          newState.possession === 'home' ? 'away' : 'home';
-        newState.moveNumber = 1;
-        newState.movePhase = 'attack';
-      }
+      // Successful dribble or pass: you keep the ball! Reset move counter, keep possession.
+      newState.moveNumber = 1;
     }
-
     // ---- UPDATE TIME ----
     newState.timeRemaining = Math.max(0, newState.timeRemaining - MOVE_TIME);
 

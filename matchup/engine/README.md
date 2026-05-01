@@ -16,7 +16,7 @@ The game takes place on a grid:
 * **Goals:** Span rows `e`, `f`, `g` at Col 1 (Home) and Col 22 (Away).
 
 ### Possession & Turns
-* **3-Move Rule:** Possession is shared. Each phase allows exactly 3 moves. Either team can use these moves (e.g., Home passes, Away tackles, Home shoots). After 3 moves, if possession hasn't changed hands via a tackle or interception, it automatically flips to the other team.
+* **1-Move Rule:** Each team gets exactly 1 move per turn, then possession flips to the other team. Tackles, interceptions, and blocked shots also flip possession immediately.
 * **10-Second Ticks:** Every single move drains 10 seconds from the match clock. A full game lasts 60 moves (10 simulated minutes).
 
 ### Move Types
@@ -60,7 +60,7 @@ To build a frontend (React, Vue, Vanilla JS) for two physical players sharing a 
 #### 1. Initialize the Game
 When the player clicks "Start Match", initialize the engine.
 ```typescript
-import { Engine, getValidMoves } from 'matchup_/engine';
+import { Engine, getValidMoves } from 'matchup/engine';
 
 const engine = Engine.init('4-3-3', '4-4-2'); 
 let currentState = engine.getState();
@@ -126,14 +126,11 @@ For AI vs AI or background simulations.
 ## 🛠️ Developer Setup
 
 ```bash
-# Install (if using npm/yarn)
-npm install
-
 # Run the test suite (96 tests)
-bun run test
+bun matchup/engine/test.ts
 
 # Run a simulated match in your terminal
-bun run simulate
+bun matchup/simulation/run.ts
 ```
 
 ---

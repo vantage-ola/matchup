@@ -136,11 +136,8 @@ export function aggressiveStrategy(
   // DEFENSE
   else {
     // Prevent infinite tackle ping-pong
-    const lastEvent = history.length > 0 ? history[history.length - 1] : null;
-    const weJustGotTackled = lastEvent?.type === 'tackle' && lastEvent.team !== team;
-    
+      
     const tackleMoves = validMoves.filter((m) => {
-      if (weJustGotTackled) return false; // Don't immediately tackle back
       const target = state.players.find((p) => p.position.col === m.to.col && p.position.row === m.to.row);
       return target && target.hasBall && target.team !== team;
     });

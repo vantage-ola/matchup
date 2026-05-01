@@ -238,20 +238,25 @@ assert(r21.valid === false, 'Teammate should not be able to tackle own ball carr
 
 console.log('\n=== POSSESSION & TURN TESTS ===\n');
 
-// Test 22: After 3 moves, possession flips
+// Test 22: After 1 move, possession flips
+// Test 22: Successful dribble keeps possession
 const game22 = Engine.init();
 const bc22 = game22.getBallCarrier()!;
 const initPoss22 = game22.getState().possession;
 game22.applyMove(bc22.id, { col: bc22.position.col + 1, row: bc22.position.row });
-const bc22b = game22.getBallCarrier()!;
-game22.applyMove(bc22b.id, { col: bc22b.position.col + 1, row: bc22b.position.row });
-const bc22c = game22.getBallCarrier()!;
-game22.applyMove(bc22c.id, { col: bc22c.position.col + 1, row: bc22c.position.row });
 const after22 = game22.getState();
-assert(after22.possession !== initPoss22, `After 3 moves possession should flip`);
+assert(after22.possession === initPoss22, `Successful dribble should KEEP possession`);
 assert(after22.moveNumber === 1, `Move number should reset to 1, got ${after22.moveNumber}`);
 
-// Test 23: Tackle immediately flips possession (doesn't wait for 3 moves)
+// Test 22b: Off-ball run flips possession
+const game22b = Engine.init();
+const offBall22b = game22b.getTeam('home').find(p => !p.hasBall)!;
+const initPoss22b = game22b.getState().possession;
+game22b.applyMove(offBall22b.id, { col: offBall22b.position.col + 1, row: offBall22b.position.row });
+const after22b = game22b.getState();
+assert(after22b.possession !== initPoss22b, `Off-ball run should FLIP possession`);
+
+// Test 23: Tackle immediately flips possession
 const game23 = Engine.init('4-3-3');
 const state23 = game23.getState();
 const fwd23 = state23.players.find(p => p.id === 'home_fwd1')!;
@@ -277,43 +282,20 @@ const game25 = Engine.init();
 const fwd25 = game25.getBallCarrier()!;
 assert(!isInGoalArea(fwd25.position, 'home'), `FWD at col ${fwd25.position.col} should NOT be in goal area`);
 
-// Test 26: Shoot from close range
+// Test 26: Shoot from close range (force position near goal)
 const game26 = Engine.init('4-3-3');
-const fwd26 = game26.getBallCarrier()!;
-game26.applyMove(fwd26.id, { col: fwd26.position.col + 2, row: fwd26.position.row }); // move 1
-const bc26b = game26.getBallCarrier()!;
-game26.applyMove(bc26b.id, { col: bc26b.position.col + 2, row: bc26b.position.row }); // move 2
-const bc26c = game26.getBallCarrier()!;
-game26.applyMove(bc26c.id, { col: bc26c.position.col + 2, row: bc26c.position.row }); // move 3 (possession flips)
-if (game26.getState().possession === 'away') {
-  const awayBc = game26.getBallCarrier();
-  if (awayBc) {
-    game26.applyMove(awayBc.id, { col: awayBc.position.col - 1, row: awayBc.position.row });
-    const awayBc2 = game26.getBallCarrier();
-    if (awayBc2) {
-      game26.applyMove(awayBc2.id, { col: awayBc2.position.col - 1, row: awayBc2.position.row });
-      const awayBc3 = game26.getBallCarrier();
-      if (awayBc3) {
-        game26.applyMove(awayBc3.id, { col: awayBc3.position.col - 1, row: awayBc3.position.row }); // possession flips back to home
-      }
-    }
-  }
-}
-const homeBc26 = game26.getBallCarrier();
-if (homeBc26 && homeBc26.team === 'home') {
-  game26.applyMove(homeBc26.id, { col: homeBc26.position.col + 2, row: homeBc26.position.row }); // move 1
-  const homeBc26b = game26.getBallCarrier();
-  if (homeBc26b && homeBc26b.team === 'home') {
-    game26.applyMove(homeBc26b.id, { col: homeBc26b.position.col + 2, row: homeBc26b.position.row }); // move 2
-    const homeBc26c = game26.getBallCarrier();
-    if (homeBc26c && homeBc26c.team === 'home') {
-      assert(isInGoalArea(homeBc26c.position, 'home'), `At col ${homeBc26c.position.col}, should be in goal area`);
-      const shotResult = game26.applyMove(homeBc26c.id, { col: 22, row: 'f' });
-      assert(shotResult.valid === true, `Should be able to shoot from col ${homeBc26c.position.col}`);
-      assert(shotResult.outcome === 'goal' || shotResult.outcome === 'blocked', `Shot outcome should be goal or blocked, got ${shotResult.outcome}`);
-    }
-  }
-}
+const forcedState26 = game26.getState();
+const forcedFwd26 = forcedState26.players.find(p => p.id === 'home_fwd1')!;
+forcedFwd26.position = { col: 20, row: 'f' };
+forcedFwd26.hasBall = true;
+forcedState26.ball = { ...forcedFwd26.position };
+forcedState26.ballCarrierId = forcedFwd26.id;
+forcedState26.possession = 'home';
+const engine26 = new Engine(forcedState26);
+assert(isInGoalArea(forcedFwd26.position, 'home'), `At col 20, should be in goal area`);
+const shotResult26 = engine26.applyMove(forcedFwd26.id, { col: 22, row: 'f' });
+assert(shotResult26.valid === true, `Should be able to shoot from col 20`);
+assert(shotResult26.outcome === 'goal' || shotResult26.outcome === 'blocked', `Shot outcome should be goal or blocked, got ${shotResult26.outcome}`);
 
 console.log('\n=== POST-GOAL RESET TESTS ===\n');
 

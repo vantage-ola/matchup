@@ -1,8 +1,8 @@
-import { GameState, Player, Role } from './types.js';
+import { GameState } from './types.js';
 import { getBallCarrier } from './formations.js';
 
 const ROWS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k'];
-const ROLE_LABEL: Record<Role, string> = { gk: 'GK', def: 'DEF', mid: 'MID', fwd: 'FWD' };
+//const ROLE_LABEL: Record<Role, string> = { gk: 'GK', def: 'DEF', mid: 'MID', fwd: 'FWD' };
 
 const CELL_WIDTH = 3;
 
@@ -74,7 +74,7 @@ export function renderStatus(state: GameState): string {
   const timeStr = minsLeft + ':' + secsLeft.toString().padStart(2, '0');
 
   const scoreLine = (state.score.home + ' - ' + state.score.away).padEnd(24);
-  const phaseLine = ('Move ' + state.moveNumber + '/3 (' + possession + ' with ball)').padEnd(24);
+  const phaseLine = ('Move ' + state.moveNumber + '/1 (' + possession + ' with ball)').padEnd(24);
   const timeLine = (timeStr + (state.status !== 'playing' ? ' [' + state.status + ']' : '')).padEnd(24);
   const ballLine = bc ? bc.name + ' at ' + state.ball.row + state.ball.col : 'none';
 
@@ -111,7 +111,7 @@ export function renderTurnSummary(
   }
 
   const possession = state.possession.toUpperCase();
-  summary += 'Score: ' + state.score.home + ' - ' + state.score.away + '  |  Move ' + state.moveNumber + '/3 (' + possession + ')';
+  summary += 'Score: ' + state.score.home + ' - ' + state.score.away + '  |  Move ' + state.moveNumber + '/1 (' + possession + ')';
 
   return summary;
 }
