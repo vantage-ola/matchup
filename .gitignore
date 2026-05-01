@@ -39,3 +39,6 @@ coverage
 # Misc
 *.pem
 .vite
+
+
+engine.txt
