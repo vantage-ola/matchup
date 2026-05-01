@@ -4,6 +4,7 @@ import type { GameState, GridPosition, MoveResult, GameMode } from '@/lib/engine
 import { Pitch } from './Pitch';
 import { ScoreBar } from './ScoreBar';
 import { MoveResultBar } from './MoveResultBar';
+import { RotateDeviceOverlay } from '@/components/RotateDeviceOverlay';
 
 interface GameScreenProps {
   state: GameState;
@@ -62,6 +63,8 @@ export function GameScreen({
   }
 
   return (
+    <>
+    <RotateDeviceOverlay />
     <div className="flex h-dvh flex-col gap-2 p-2">
       <div className="flex items-center gap-2">
         <div className="flex-1">
@@ -102,5 +105,6 @@ export function GameScreen({
         )}
       </div>
     </div>
+    </>
   );
 }
