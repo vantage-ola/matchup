@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { listFormations, type FormationName, type GameMode } from '@/lib/engine';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 interface SetupScreenProps {
   onStart: (mode: GameMode, homeFormation: FormationName, awayFormation: FormationName) => void;
@@ -15,7 +16,10 @@ export function SetupScreen({ onStart, onShowRulebook }: SetupScreenProps) {
   const [awayFormation, setAwayFormation] = useState<FormationName>('4-3-3');
 
   return (
-    <div className="flex min-h-dvh items-center justify-center p-4">
+    <div className="relative flex min-h-dvh items-center justify-center p-4">
+      <div className="absolute right-3 top-3">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-sm space-y-6">
         <div className="space-y-1 text-center">
           <h1 className="text-3xl font-bold tracking-tight">MATCHUP</h1>
