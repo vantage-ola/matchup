@@ -1,9 +1,7 @@
 export type Role = 'gk' | 'def' | 'mid' | 'fwd';
 export type Team = 'home' | 'away';
-export type MovePhase = 'attack';
 export type MoveType = 'move' | 'pass' | 'shoot' | 'tackle';
 export type Outcome = 'success' | 'intercepted' | 'blocked' | 'tackled' | 'tackleFailed' | 'goal' | 'miss';
-export type TurnStatus = 'playing' | 'scored' | 'turnover';
 export type FormationName = '4-3-3' | '4-4-2' | '3-5-2' | '5-3-2' | '4-2-3-1' | '3-4-3';
 
 export interface GridPosition {
@@ -25,16 +23,11 @@ export interface GameState {
   ball: GridPosition;
   ballCarrierId: string | null;
   possession: Team;
-  moveNumber: number;
-  movePhase: MovePhase;
-  phase: number;
   score: { home: number; away: number };
   timeRemaining: number;
   status: GameStatus;
   homeFormation: FormationName;
   awayFormation: FormationName;
-  actionPoints: { home: number; away: number };
-  maxActionPoints: number;
   halfTimeTriggered: boolean;
 }
 
@@ -59,33 +52,13 @@ export interface MoveResult {
 export const ROWS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k'] as const;
 export const COLS = 22;
 
-// Move distance limits
-export const MAX_DRIBBLE_DIST = 2;
-export const MAX_PASS_DIST = 7;
-export const MAX_RUN_DIST = 2;
-export const MAX_PURSUIT_DIST = 1;
-export const MAX_TACKLE_DIST = 2;
-export const MAX_SHOT_DIST = 3;
+// Movement: dribbles, runs, and tackles are all 1 cell. Passes/shots reach 10.
+export const MAX_STEP_DIST = 1;
+export const MAX_PASS_DIST = 10;
 
 // Interception: how close a defender must be to the pass line
 export const INTERCEPT_RADIUS = 1.2;
 
-export const AP_COST: Record<string, number> = {
-  run: 1,
-  pass: 1,
-  dribble: 2,
-  shoot: 2,
-  tackle: 1,
-};
-
-export const LONG_PASS_THRESHOLD = 4;
-export const LONG_PASS_AP_COST = 2;
-
-export function passApCost(distance: number): number {
-  return distance >= LONG_PASS_THRESHOLD ? LONG_PASS_AP_COST : AP_COST.pass;
-}
-
-export const INITIAL_AP = 20;
 export const HALF_TIME_THRESHOLD = 1800;
 
 export function posEq(a: GridPosition, b: GridPosition): boolean {
@@ -123,15 +96,4 @@ export function isGoalPosition(pos: GridPosition, team: Team): boolean {
     pos.row >= goal.minRow &&
     pos.row <= goal.maxRow
   );
-}
-
-export function isInGoalArea(pos: GridPosition, team: Team): boolean {
-  const goal = team === 'home' ? AWAY_GOAL : HOME_GOAL;
-  const colDist = Math.abs(pos.col - goal.col);
-  const rowDist = pos.row < goal.minRow
-    ? rowToNum(goal.minRow) - rowToNum(pos.row)
-    : pos.row > goal.maxRow
-      ? rowToNum(pos.row) - rowToNum(goal.maxRow)
-      : 0;
-  return colDist <= MAX_SHOT_DIST && rowDist <= MAX_SHOT_DIST;
 }

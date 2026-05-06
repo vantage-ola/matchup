@@ -1,5 +1,4 @@
-import type { Player, FormationName, GridPosition, Team, GameState, GameStatus } from './types.js';
-import { INITIAL_AP } from './types.js';
+import type { Player, FormationName, GridPosition, Team, GameState } from './types.js';
 
 export const GAME_DURATION = 3600; // 60 minutes in seconds
 
@@ -257,16 +256,11 @@ export function initGameState(
     ball: ballCarrier ? { ...ballCarrier.position } : { col: 11, row: 'f' },
     ballCarrierId: ballCarrier?.id || null,
     possession: 'home',
-    moveNumber: 1,
-    movePhase: 'attack',
-    phase: 1,
     score: { home: 0, away: 0 },
     timeRemaining: GAME_DURATION,
     status: 'playing',
     homeFormation: homeName,
     awayFormation: awayName,
-    actionPoints: { home: INITIAL_AP, away: INITIAL_AP },
-    maxActionPoints: INITIAL_AP,
     halfTimeTriggered: false,
   };
 }

@@ -15,27 +15,28 @@ The game takes place on a grid:
 * **Rows:** `a` to `k` (Top to bottom).
 * **Goals:** Span rows `e`, `f`, `g` at Col 1 (Home) and Col 22 (Away).
 
-### Possession & Action Points
-* **3 AP per phase:** When a team gains possession, they receive 3 Action Points. Each move costs AP. When AP hits 0, possession flips and the new owner receives a fresh 3 AP.
-* **AP costs:**
-  * Pass — 1 AP
-  * Off-ball run — 1 AP
-  * Dribble — 2 AP
-  * Shoot — 2 AP
-* **Free turnovers reset the budget:** Tackles, interceptions, blocked shots, missed shots, and goals all transfer possession with a fresh 3 AP for the new owner.
-* **End Turn:** A team may voluntarily end its phase via `engine.endTurn()` — possession flips, AP resets to 3, and no clock time is consumed.
-* **10-Second Ticks:** Every successful action move drains 10 seconds from the match clock. A full game lasts 10 simulated minutes.
+### Turn Structure (Chess-Style)
+* **One action per turn.** Like chess. The team in possession moves one piece, once — pass, dribble, run, tackle, or shoot — and the turn ends. Possession then flips to the opponent.
+* **No action points.** No phase budget, no skip-phase. Every successful action ends your turn.
+* **Possession after a turnover:** tackle, interception, missed shot, blocked shot, or goal-conceded all hand the ball (and the next turn) to the team now holding it.
+* **Half-time pause:** When `timeRemaining` first crosses 1800s, status flips to `'halfTime'` and the UI must wait for `engine.resumeFromHalfTime()`. Resume just flips status back to `'playing'`.
+* **10-Second Ticks:** Every successful action drains 10 seconds. Full game = 60 simulated minutes.
 
-### Open Receiver
-A pass is blocked when **2 or more** opposing players sit within 1 cell (Chebyshev radius) of the intended receiver. One marker is fine — a true swarm is not. This makes the pass game spatial: you must move teammates into space before threading a ball into pressure.
+### Pass Risk (Geometric Only)
+A pass fails only when a defender sits on (or near) the line between passer and receiver. The engine projects each defender onto the pass line; any defender within `1.2` grid units of the line intercepts. There is no distance-tiered RNG bust and no swarm rule. RNG is still injectable via `Engine.init(home, away, rng)` — used now for tackle outcomes.
+
+### Tackle Gamble
+Tackles are 1-cell only with a fixed roll:
+* **80% success.** On success: positions swap, ball flips, possession flips.
+* **20% failure.** Carrier keeps the ball, tackler bounces back one cell along the carrier→tackler vector (clamped to bounds, no-op if occupied). Outcome is reported as `'tackleFailed'` and the turn still ends — the failed tackle counted as the defender's action.
 
 ### Move Types
 The engine automatically classifies your intended move based on context:
-1. **Dribble:** Move the ball carrier to an empty cell (Max 2 cells). Cannot go backward.
-2. **Pass:** Target a teammate's cell (Max 7 cells). *Backward passes are allowed* to relieve pressure.
-3. **Shoot:** Target the goal column when in range (Max 3 cells). Can miss wide or be blocked by nearby defenders.
-4. **Off-Ball Run:** Move a player without the ball into an empty space (Max 2 cells). Can move in any direction. **Pursuit cap:** if the run lands closer to the opposing ball-carrier, it is limited to 1 cell — no leaping in to tackle from distance.
-5. **Tackle:** Move a defender onto the opposing ball carrier's cell (Max 2 cells). **Positions swap** (tackler takes the ball spot, carrier is pushed back to where the tackler was), and possession flips immediately.
+1. **Dribble:** Move the ball carrier to an empty adjacent cell. **Exactly 1 cell, any direction (forward, sideways, backward).**
+2. **Pass:** Target a teammate's cell. **Up to 10 cells, any direction.** Targeting an opponent's cell is invalid.
+3. **Shoot:** Target the opponent's goal column. **Up to 10 cells.** Can miss wide or be blocked by nearby defenders.
+4. **Off-Ball Run:** Move a player without the ball into an empty cell. **Exactly 1 cell, any direction.** No pursuit cap, no swarm rule.
+5. **Tackle:** Move a defender onto the carrier's cell. **Exactly 1 cell.** Success swaps positions and flips possession; failure bounces the tackler back.
 
 ### Interceptions
 When a pass is made, the engine draws an invisible line from the passer to the receiver. If an opposing defender is within `1.2` grid units of this line, the pass is intercepted and possession flips.
@@ -44,7 +45,7 @@ When a pass is made, the engine draws an invisible line from the passer to the r
 
 ## ✅ What It Does
 
-* **100% Deterministic:** Given the same starting state and inputs, it produces the exact same results every time.
+* **Deterministic with injectable RNG:** Pass `() => 0` or `() => 1` into `Engine.init` for fully reproducible runs; default uses `Math.random` for production.
 * **6 Formations:** `4-3-3`, `4-4-2`, `3-5-2`, `5-3-2`, `4-2-3-1`, `3-4-3`.
 * **Strict Validation:** Prevents teleporting, backward dribbling, moving through players, and shooting from distance.
 * **Built-in Simulation Harness:** Includes an `aggressiveStrategy` AI and a `Simulator` class to run matches to completion and generate structured match reports.
@@ -101,6 +102,7 @@ const result = engine.applyMove(clickedPlayer.id, targetCell);
 // result.outcome tells you what happened:
 // 'success' -> normal move
 // 'tackled' -> show a tackle animation, possession flips
+// 'tackleFailed' -> tackler bounces back, carrier keeps ball, no flip
 // 'intercepted' -> show interception animation
 // 'goal' -> show goal screen/animation!
 // 'miss' / 'blocked' -> show failed shot animation
@@ -118,9 +120,10 @@ If `result.outcome === 'goal'`, the engine automatically resets all players to t
 
 ### `Engine`
 The core state machine.
-* `new Engine(state?)` / `Engine.init(home, away)`: Create a game instance.
+* `new Engine(state?, rng?)` / `Engine.init(home, away, rng?)`: Create a game instance. `rng` defaults to `Math.random`.
 * `engine.getState(): GameState`: Returns a deep-cloned snapshot of the game (safe to store in React state).
 * `engine.applyMove(playerId, to): MoveResult`: The single source of truth for executing actions.
+* `engine.resumeFromHalfTime()`: Resume from `'halfTime'` (flips status back to `'playing'`).
 * `engine.getBallCarrier(): Player`: Quick helper to find who has the ball.
 
 ### `getValidMoves(state, team)`
@@ -136,7 +139,7 @@ For AI vs AI or background simulations.
 ## 🛠️ Developer Setup
 
 ```bash
-# Run the test suite (118 tests)
+# Run the test suite
 bun matchup/engine/test.ts
 
 # Run a simulated match in your terminal
