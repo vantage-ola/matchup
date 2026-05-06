@@ -72,7 +72,7 @@ Each `applyMove` call:
 4. For tackles: fixed 80% success at 1 cell. On failure, tackler is pushed back 1 cell, carrier keeps ball, outcome `'tackleFailed'`. The turn still ends.
 5. For shots: nearby defenders (distance < 2) → blocked or goal.
 6. Possession flips: every successful action ends the actor's turn. Tackles/intercepts/misses/blocks/goals send possession to whichever team now holds the ball; normal dribble/pass/run hands possession to the opponent.
-7. Deducts 10 seconds from `timeRemaining`. Goal-reset (if any) runs first; then half-time check fires when crossing 1800s.
+7. Deducts 10 seconds from `timeRemaining`. Goal-reset (if any) runs first; then half-time check fires when crossing 2700s.
 8. Returns `MoveResult` with outcome, new state, flags.
 
 ### Turn Structure (Chess-Style)
@@ -108,10 +108,10 @@ GameStatus: 'playing' | 'halfTime' | 'fullTime' | 'abandoned'
 Six presets: `4-3-3`, `4-4-2`, `3-5-2`, `5-3-2`, `4-2-3-1`, `3-4-3`. Each defines exact grid positions for 11 home + 11 away players. Player IDs follow pattern: `home_gk`, `home_def1`...`home_def4`, `home_mid1`...etc.
 
 ### Time Model
-- 3600 seconds total (60 minutes)
+- 5400 seconds total (90 minutes)
 - 10 seconds per move
-- Half-time fires when `timeRemaining` first crosses **1800s**: status becomes `'halfTime'`, blocking input until `resumeFromHalfTime()`
-- A goal scored on the same move that crosses 1800s: goal-reset runs first, then half-time triggers — score counts before the break
+- Half-time fires when `timeRemaining` first crosses **2700s**: status becomes `'halfTime'`, blocking input until `resumeFromHalfTime()`
+- A goal scored on the same move that crosses 2700s: goal-reset runs first, then half-time triggers — score counts before the break
 - `fullTime` when `timeRemaining` hits 0 (checked before half-time, so a final-second goal doesn't get rerouted into HT)
 
 ### Interception Math
