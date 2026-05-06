@@ -1,10 +1,11 @@
-import type { Player, Team } from '@/lib/engine';
+import type { Player } from '@/lib/engine';
 
 interface PlayerTokenProps {
   player: Player;
   isSelected: boolean;
   isCurrent: boolean;
   compact: boolean;
+  tackleFailed?: boolean;
   onClick: () => void;
 }
 
@@ -20,8 +21,14 @@ function getShortName(player: Player): string {
   return SHORT_NAMES[suffix] ?? suffix.toUpperCase();
 }
 
-export function PlayerToken({ player, isSelected, isCurrent, compact, onClick }: PlayerTokenProps) {
+export function PlayerToken({ player, isSelected, isCurrent, compact, tackleFailed, onClick }: PlayerTokenProps) {
   const isHome = player.team === 'home';
+
+  const animation = tackleFailed
+    ? 'tackle-fail 400ms ease-out 1'
+    : isSelected
+    ? 'pulse 1.5s ease-in-out infinite'
+    : 'none';
 
   return (
     <button
@@ -35,7 +42,7 @@ export function PlayerToken({ player, isSelected, isCurrent, compact, onClick }:
         border: isHome ? '2px solid #0f172a' : '2px solid #fecdd3',
         opacity: isCurrent ? 1 : 0.45,
         boxShadow: isSelected ? '0 0 0 3px #facc15' : 'none',
-        animation: isSelected ? 'pulse 1.5s ease-in-out infinite' : 'none',
+        animation,
         fontSize: compact ? 6 : 8,
         fontWeight: 700,
         lineHeight: 1,

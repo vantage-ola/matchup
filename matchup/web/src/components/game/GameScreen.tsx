@@ -1,11 +1,17 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import type { GameState, GridPosition, MoveResult, GameMode } from '@/lib/engine';
+import {
+  type GameState,
+  type GridPosition,
+  type MoveResult,
+  type GameMode,
+} from '@/lib/engine';
 import { Pitch } from './Pitch';
 import { ScoreBar } from './ScoreBar';
 import { MoveResultBar } from './MoveResultBar';
 import { RotateDeviceOverlay } from '@/components/RotateDeviceOverlay';
 import { RulebookDialog } from '@/components/rulebook/RulebookDialog';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 interface GameScreenProps {
   state: GameState;
@@ -19,7 +25,7 @@ interface GameScreenProps {
   onSelectPlayer: (playerId: string) => void;
   onExecuteMove: (playerId: string, to: GridPosition) => void;
   onDeselect: () => void;
-  onEndTurn: () => void;
+  onResumeFromHalfTime: () => void;
   onQuit: () => void;
 }
 
@@ -35,7 +41,7 @@ export function GameScreen({
   onSelectPlayer,
   onExecuteMove,
   onDeselect,
-  onEndTurn,
+  onResumeFromHalfTime,
   onQuit,
 }: GameScreenProps) {
   const [paused, setPaused] = useState(false);
@@ -44,8 +50,27 @@ export function GameScreen({
     ? (state.possession === 'home' ? 'Your turn' : 'AI thinking...')
     : (state.possession === 'home' ? 'Home turn' : 'Away turn');
 
-  const isHumanTurn = mode === 'ai' ? state.possession === 'home' : true;
-  const canEndTurn = isHumanTurn && !isAiThinking && state.actionPoints < 3;
+  const animTacklerId =
+    lastMoveResult?.outcome === 'tackleFailed' && lastMoveResult.move
+      ? lastMoveResult.move.playerId
+      : null;
+
+
+  if (state.status === 'halfTime') {
+    return (
+      <div className="flex h-dvh items-center justify-center p-4">
+        <div className="w-full max-w-xs space-y-4 text-center">
+          <h2 className="text-2xl font-bold">HALF-TIME</h2>
+          <p className="text-sm text-muted-foreground">
+            {state.score.home} — {state.score.away}
+          </p>
+          <Button className="h-12 w-full text-lg font-bold" onClick={onResumeFromHalfTime}>
+            TAP TO START SECOND HALF
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (paused) {
     return (
@@ -88,6 +113,9 @@ export function GameScreen({
             </Button>
           }
         />
+        <div className="flex h-14 items-center">
+          <ThemeToggle />
+        </div>
         <Button
           variant="ghost"
           size="sm"
@@ -105,6 +133,7 @@ export function GameScreen({
             selectedPlayerId={selectedPlayerId}
             selectedPlayerMoves={selectedPlayerMoves}
             isAiThinking={isAiThinking}
+            failedTacklerId={animTacklerId}
             onSelectPlayer={onSelectPlayer}
             onExecuteMove={onExecuteMove}
             onDeselect={onDeselect}
@@ -123,15 +152,6 @@ export function GameScreen({
             <span>{turnLabel} — tap a player to select</span>
           )}
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 px-2 text-[10px] font-bold tracking-wide"
-          onClick={onEndTurn}
-          disabled={!canEndTurn}
-        >
-          END TURN
-        </Button>
       </div>
     </div>
     </>

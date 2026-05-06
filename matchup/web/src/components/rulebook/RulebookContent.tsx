@@ -17,54 +17,55 @@ export function RulebookContent() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-base font-bold uppercase tracking-wide">Possession & action points</h2>
+        <h2 className="text-base font-bold uppercase tracking-wide">One action per turn</h2>
         <p className="text-muted-foreground">
-          Every phase the team in possession gets <span className="font-bold text-foreground">3 action points</span>. Each
-          move costs AP. When AP hits 0, possession flips and the other side gets 3 AP. You can also END TURN voluntarily.
+          Like chess. You move <span className="font-bold text-foreground">one piece, once</span>, then it's the
+          opponent's turn. Every successful action — pass, dribble, run, anything — ends your turn. Use it well.
         </p>
-        <ul className="space-y-1 text-muted-foreground">
-          <li>• Pass: <span className="font-bold text-foreground">1 AP</span></li>
-          <li>• Off-ball run: <span className="font-bold text-foreground">1 AP</span></li>
-          <li>• Dribble: <span className="font-bold text-foreground">2 AP</span></li>
-          <li>• Shoot: <span className="font-bold text-foreground">2 AP</span></li>
-        </ul>
       </section>
 
       <section className="space-y-2">
         <h2 className="text-base font-bold uppercase tracking-wide">Move types</h2>
         <ul className="space-y-1 text-muted-foreground">
-          <li>• <span className="font-bold text-foreground">Dribble</span> — ball carrier moves up to 2 cells. Forward or sideways only.</li>
-          <li>• <span className="font-bold text-foreground">Pass</span> — ball carrier sends ball to a teammate up to 7 cells away.</li>
-          <li>• <span className="font-bold text-foreground">Run</span> — off-ball player moves up to 2 cells. Closing on the ball-carrier is capped at 1 cell.</li>
-          <li>• <span className="font-bold text-foreground">Shoot</span> — must be within 3 cells of the opponent goal.</li>
-          <li>• <span className="font-bold text-foreground">Tackle</span> — non-ball player steps onto the carrier within 2 cells.</li>
+          <li>• <span className="font-bold text-foreground">Dribble</span> — ball carrier steps <span className="font-bold text-foreground">1 cell</span> in any direction.</li>
+          <li>• <span className="font-bold text-foreground">Pass</span> — ball carrier sends ball to a teammate up to <span className="font-bold text-foreground">10 cells</span>, any direction (backward is fine).</li>
+          <li>• <span className="font-bold text-foreground">Run</span> — off-ball player steps <span className="font-bold text-foreground">1 cell</span> in any direction.</li>
+          <li>• <span className="font-bold text-foreground">Shoot</span> — ball carrier strikes the goal column from up to <span className="font-bold text-foreground">10 cells</span>.</li>
+          <li>• <span className="font-bold text-foreground">Tackle</span> — defender steps <span className="font-bold text-foreground">1 cell</span> onto the carrier.</li>
         </ul>
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-base font-bold uppercase tracking-wide">Open receiver</h2>
+        <h2 className="text-base font-bold uppercase tracking-wide">Pass risk</h2>
         <p className="text-muted-foreground">
-          A pass is blocked if <span className="font-bold text-foreground">2 or more defenders</span> sit within 1 cell of
-          the target. One marker is fine — a swarm is not. Move teammates into space before passing into pressure.
+          A pass fails when a defender sits on (or near) the line between passer and receiver. No swarm rule, no random
+          bust — if the lane is clear, the ball arrives. Find the seam.
         </p>
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-base font-bold uppercase tracking-wide">Tackles & interceptions</h2>
+        <h2 className="text-base font-bold uppercase tracking-wide">Tackle gamble</h2>
         <p className="text-muted-foreground">
-          Tackles swap positions: tackler takes the cell and the ball; the dispossessed player drops back to the tackler's
-          old spot. A pass is intercepted if any defender sits within 1.2 cells of the pass line. Either event hands the
-          opposition a fresh 3 AP.
+          Step adjacent to the carrier and roll. <span className="font-bold text-foreground">80%</span> success: you take
+          the ball and swap places. <span className="font-bold text-foreground">20%</span>: you bounce back a cell, the
+          carrier keeps it, and your turn is gone.
+        </p>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-base font-bold uppercase tracking-wide">Half-time</h2>
+        <p className="text-muted-foreground">
+          When the clock crosses 30:00, the match pauses. Tap to start the second half.
         </p>
       </section>
 
       <section className="space-y-2">
         <h2 className="text-base font-bold uppercase tracking-wide">Tips</h2>
         <ul className="space-y-1 text-muted-foreground">
-          <li>• Spend AP like a budget. A 2-AP dribble plus a 1-AP pass ends the phase.</li>
-          <li>• Stalled? END TURN is free — no clock cost — and beats wasting moves.</li>
-          <li>• Stack two markers near the danger man. One isn't enough to stop the pass.</li>
-          <li>• Shots near the goal-line with no defender within 2 cells go in.</li>
+          <li>• Every move costs you the turn. Make it count.</li>
+          <li>• Long passes are now cheap — but only if the lane is clean. Read defenders before you launch one.</li>
+          <li>• Defending is positional. Cut passing lanes and force the carrier into a 1-cell shuffle.</li>
+          <li>• Tackles are 80% but they're a one-shot bet. Don't tackle if a pass blockade does the same job.</li>
         </ul>
       </section>
     </div>

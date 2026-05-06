@@ -55,7 +55,7 @@ export function App() {
         onSelectPlayer={game.selectPlayer}
         onExecuteMove={game.executeMove}
         onDeselect={game.deselectPlayer}
-        onEndTurn={game.endTurn}
+        onResumeFromHalfTime={game.resumeFromHalfTime}
         onQuit={game.resetGame}
       />
     );

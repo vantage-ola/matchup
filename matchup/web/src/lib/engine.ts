@@ -14,7 +14,7 @@ export {
   posToString,
   rowToNum,
   gridDistance,
-  AP_COST,
+  HALF_TIME_THRESHOLD,
 } from '@engine/types.js';
 export {
   getValidMoves,

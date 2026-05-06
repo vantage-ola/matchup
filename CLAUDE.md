@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Matchup is a turn-based football strategy game on a 22×11 grid. Two teams of 11 take turns moving players, passing, and shooting. Possession flips every move. The engine is deterministic — no randomness, pure positional tactics.
+Matchup is a turn-based football strategy game on a 22×11 grid. Two teams of 11 alternate single actions, chess-style: every successful move ends your turn. The engine uses an injectable RNG (defaults to `Math.random`) for tackle gambles; tests pin RNG for determinism.
 
 Active code lives in `matchup/`. The previous prototype lives in `old/` and should be ignored.
 
@@ -18,7 +18,7 @@ matchup/
 │   ├── formations.ts   # 6 formation presets, state init, player/ball queries
 │   ├── moves.ts        # Move validation (direction, bounds, occupied cells)
 │   ├── render.ts       # CLI ASCII pitch renderer + status display
-│   ├── test.ts         # 118-test suite with custom assert runner
+│   ├── test.ts         # Engine test suite with custom assert runner
 │   └── README.md       # Full technical spec
 ├── simulation/
 │   ├── simulate.ts     # AI strategies, getValidMoves(), Simulator class
@@ -36,7 +36,7 @@ matchup/
 ## Commands
 
 ```bash
-bun matchup/engine/test.ts           # Run engine test suite (118 tests)
+bun matchup/engine/test.ts           # Run engine test suite
 bun matchup/simulation/run.ts        # Run AI vs AI simulation
 bun --cwd matchup/web dev            # Start web dev server
 bun --cwd matchup/web build          # Production build
@@ -59,47 +59,48 @@ Use `bun` — not npm/node/npx.
 
 ### Core Loop
 ```
-Engine.init(homeFormation?, awayFormation?) → Engine
+Engine.init(homeFormation?, awayFormation?, rng?) → Engine
 engine.applyMove(playerId, gridPosition) → MoveResult
+engine.resumeFromHalfTime() → void     // status → 'playing'
 engine.getState() → GameState (deep clone, immutable)
 ```
 
 Each `applyMove` call:
-1. Validates move (direction, bounds, occupancy, AP budget)
-2. Detects type: dribble / pass / shoot / run / tackle
-3. For passes: checks interception via point-to-line projection (threshold: 1.2 cells) and the open-receiver rule
-4. For shots: checks nearby defenders (distance < 2) → blocked or goal
-5. Updates possession + AP (deducts cost, flips to opponent on AP=0 or turnover)
-6. Deducts 10 seconds from timeRemaining
-7. Returns `MoveResult` with outcome, new state, flags
+1. Validates move (bounds, occupancy, distance — 1 cell for dribble/run/tackle, up to 10 for pass/shoot).
+2. Detects type: dribble / pass / shoot / run / tackle.
+3. For passes: geometric interception check only (defender within 1.2 of pass line). No swarm rule, no distance-tiered RNG.
+4. For tackles: fixed 80% success at 1 cell. On failure, tackler is pushed back 1 cell, carrier keeps ball, outcome `'tackleFailed'`. The turn still ends.
+5. For shots: nearby defenders (distance < 2) → blocked or goal.
+6. Possession flips: every successful action ends the actor's turn. Tackles/intercepts/misses/blocks/goals send possession to whichever team now holds the ball; normal dribble/pass/run hands possession to the opponent.
+7. Deducts 10 seconds from `timeRemaining`. Goal-reset (if any) runs first; then half-time check fires when crossing 1800s.
+8. Returns `MoveResult` with outcome, new state, flags.
 
-### Possession System (Action Points)
-- Each phase starts with **3 AP**. Costs: pass/run = 1, dribble/shoot = 2.
-- AP hits 0 → possession flips, new owner gets fresh 3 AP.
-- Tackles, interceptions, blocked shots, missed shots → possession flips with fresh 3 AP.
-- Goal → teams reset to formation, conceding team gets ball at their forward with fresh 3 AP.
-- `engine.endTurn()` flips possession voluntarily — no clock cost.
+### Turn Structure (Chess-Style)
+- **One action per turn.** No AP, no phase budget, no skip-phase. Every successful move ends the turn and flips possession.
+- Tackle / interception / missed shot / blocked shot / goal kickoff all transfer possession naturally because the ball changes hands.
+- A failed tackle (`'tackleFailed'`) keeps the ball with the carrier but still ends the defender's turn — the failed gamble was the action.
+- `engine.resumeFromHalfTime()` only flips status back to `'playing'`. Possession is whatever it was when half-time fired.
+- RNG is injectable: `Engine.init(home, away, rng)` defaults to `Math.random`. Tests inject `() => 0` (always-fail tackle) / `() => 1` (always-succeed tackle) for determinism.
 
 ### Movement Rules
-- **Ball carrier**: forward or sideways only when dribbling/shooting; passes to teammates may go backward.
-- **Teammates**: forward, sideways, or backward.
+- **Dribble / Run / Tackle**: exactly 1 cell, any direction (forward, sideways, backward).
+- **Pass / Shoot**: up to 10 cells, any direction. Backward passes are legal.
 - **No cell sharing**: occupied cells block movement.
-- **Passing**: ball carrier to teammate, straight line, max 7 cells.
-- **Open receiver**: pass blocked if **2+ defenders** sit within 1 cell of the target.
-- **Off-ball runs**: max 2 cells. **Pursuit cap**: if the run lands closer to the ball-carrier than it started, it is capped at 1 cell — stops cross-pitch leap-and-tackle.
-- **Shooting**: must be within 3 cells of opponent goal.
+- **Passing onto an opponent's cell**: invalid.
+- **Pass interception**: geometric only — defender within 1.2 of the pass line. No swarm rule.
+- **Shooting**: target the opponent's goal column from up to 10 cells; defenders within 2 cells of the strike block.
 
 ### Key Types
 
 ```typescript
 GridPosition { col: number; row: string }     // { col: 9, row: 'f' }
 Player { id, name, role, team, position, hasBall }
-GameState { players[], ball, ballCarrierId, possession, moveNumber, score, timeRemaining, status, actionPoints }
+GameState { players[], ball, ballCarrierId, possession, score, timeRemaining, status, homeFormation, awayFormation, halfTimeTriggered }
 MoveResult { valid, outcome, newState, scored?, possessionChange? }
 
 Role: 'gk' | 'def' | 'mid' | 'fwd'
 Team: 'home' | 'away'
-Outcome: 'success' | 'intercepted' | 'blocked' | 'tackled' | 'goal' | 'miss'
+Outcome: 'success' | 'intercepted' | 'blocked' | 'tackled' | 'tackleFailed' | 'goal' | 'miss'
 GameStatus: 'playing' | 'halfTime' | 'fullTime' | 'abandoned'
 ```
 
@@ -108,16 +109,17 @@ Six presets: `4-3-3`, `4-4-2`, `3-5-2`, `5-3-2`, `4-2-3-1`, `3-4-3`. Each define
 
 ### Time Model
 - 3600 seconds total (60 minutes)
-- 10 seconds per move → ~360 moves max
-- Half-time detection around the midpoint
-- `fullTime` when timeRemaining hits 0
+- 10 seconds per move
+- Half-time fires when `timeRemaining` first crosses **1800s**: status becomes `'halfTime'`, blocking input until `resumeFromHalfTime()`
+- A goal scored on the same move that crosses 1800s: goal-reset runs first, then half-time triggers — score counts before the break
+- `fullTime` when `timeRemaining` hits 0 (checked before half-time, so a final-second goal doesn't get rerouted into HT)
 
 ### Interception Math
-Pass interception uses dot-product projection to find closest point on the pass line to each defender. If distance < 1.2 cells → intercepted, possession flips.
+Pass interception uses dot-product projection to find closest point on the pass line to each defender. If distance < 1.2 cells → intercepted, possession flips. This is the only failure mode for a pass.
 
 ## Design Principles
-- **Zero external dependencies** — pure TypeScript logic
-- **Deterministic** — no randomness in current implementation
+- **Zero external dependencies** in the engine — pure TypeScript logic
+- **Deterministic with injectable RNG** — production uses `Math.random`; tests pin RNG via the `Engine` constructor
 - **Immutable returns** — `getState()` deep clones, `applyMove()` returns new state
 - **Validation first** — `validateMove()` checks legality before any state mutation
 

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { type GameState, type Player, type MoveOption, ROWS, posToString } from '@/lib/engine';
+import { type GameState, type Player, ROWS, posToString } from '@/lib/engine';
 import { PlayerToken } from './PlayerToken';
 
 interface PitchProps {
@@ -7,6 +7,7 @@ interface PitchProps {
   selectedPlayerId: string | null;
   selectedPlayerMoves: Set<string>;
   isAiThinking: boolean;
+  failedTacklerId?: string | null;
   onSelectPlayer: (playerId: string) => void;
   onExecuteMove: (playerId: string, to: { col: number; row: string }) => void;
   onDeselect: () => void;
@@ -26,6 +27,7 @@ export function Pitch({
   selectedPlayerId,
   selectedPlayerMoves,
   isAiThinking,
+  failedTacklerId,
   onSelectPlayer,
   onExecuteMove,
   onDeselect,
@@ -102,6 +104,7 @@ export function Pitch({
                     isSelected={player.id === selectedPlayerId}
                     isCurrent={player.team === state.possession}
                     compact={compact}
+                    tackleFailed={player.id === failedTacklerId}
                     onClick={() => {
                       if (player.team === state.possession && !isAiThinking) {
                         onSelectPlayer(player.id);

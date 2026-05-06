@@ -3,7 +3,6 @@ import {
   Engine,
   type GameState,
   type GridPosition,
-  type Team,
   type MoveResult,
   type FormationName,
   type MoveOption,
@@ -88,6 +87,7 @@ export function useGame() {
           type: result.outcome === 'success' ? 'move'
             : result.outcome === 'intercepted' ? 'interception'
             : result.outcome === 'tackled' ? 'tackle'
+            : result.outcome === 'tackleFailed' ? 'tackleFailed'
             : result.outcome,
           team: 'away',
           description: `AI: ${player?.name ?? chosen.playerId} ${result.outcome}`,
@@ -168,17 +168,15 @@ export function useGame() {
     setSelectedPlayerMoves(new Set());
   }, []);
 
-  const endTurn = useCallback(() => {
-    if (!engineRef.current || !state || isAiThinking) return;
-    if (state.possession !== 'home' && mode === 'ai') return;
-    engineRef.current.endTurn();
+  const resumeFromHalfTime = useCallback(() => {
+    if (!engineRef.current) return;
+    engineRef.current.resumeFromHalfTime();
     const newState = syncState();
     if (!newState) return;
-    if (checkGameOver(newState)) return;
     if (mode === 'ai' && newState.possession === 'away' && newState.status === 'playing') {
       playAiTurn();
     }
-  }, [state, isAiThinking, mode, syncState, checkGameOver, playAiTurn]);
+  }, [mode, syncState, playAiTurn]);
 
   const resetGame = useCallback(() => {
     if (aiTimerRef.current) {
@@ -210,7 +208,7 @@ export function useGame() {
     selectPlayer,
     executeMove,
     deselectPlayer,
-    endTurn,
+    resumeFromHalfTime,
     resetGame,
   };
 }
