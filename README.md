@@ -1,4 +1,4 @@
-# Matchday
+# Matchup
 
 Turn-based football strategy on a 22×11 grid. Two teams of 11 take turns moving, passing, and shooting. Each phase runs on a 3-Action-Point budget and possession flips when the budget runs out (or on a tackle, interception, or blocked shot). The engine is deterministic — no randomness, pure positional tactics. An in-app rulebook is reachable from the setup screen and from the in-game `?` button.
 
