@@ -1,16 +1,16 @@
 # Matchup
 
-Turn-based football strategy on a 22×11 grid. Two teams of 11 take turns moving, passing, and shooting. Each phase runs on a 3-Action-Point budget and possession flips when the budget runs out (or on a tackle, interception, or blocked shot). The engine is deterministic — no randomness, pure positional tactics. An in-app rulebook is reachable from the setup screen and from the in-game `?` button.
+Turn-based football strategy on a 22×11 grid. Two teams of 11 alternate single actions, chess-style — every successful move ends your turn and flips possession. The engine is deterministic with an injectable RNG: tackles are an 80% success gamble in production; tests pin the RNG for reproducibility. An in-app rulebook is reachable from the setup screen and from the in-game `?` button.
 
 ## Layout
 
 ```
 matchup/
-├── engine/        # Pure TypeScript game engine (118 tests)
+├── engine/        # Pure TypeScript game engine
 ├── simulation/    # AI strategies + AI vs AI runner
 └── web/           # React 19 + Vite + shadcn/ui frontend
 old/               # Previous prototype — ignore
-docs/              # Idea brief, brand guidelines
+docs/              # Brand guidelines, design system, archived briefs
 ```
 
 ## Commands
@@ -19,6 +19,7 @@ docs/              # Idea brief, brand guidelines
 bun matchup/engine/test.ts        # Run engine tests
 bun matchup/simulation/run.ts     # AI vs AI simulation
 bun --cwd matchup/web dev         # Start web app
+bun --cwd matchup/web build       # Production build
 ```
 
 Use `bun` — not npm/node/npx.
@@ -31,6 +32,6 @@ Use `bun` — not npm/node/npx.
 ## Docs
 
 - `matchup/engine/README.md` — engine spec (grid, rules, API)
-- `CLAUDE.md` — guidance for Claude Code
-- `docs/IDEA_BRIEF.md` — design intent
+- `AGENTS.md` — guidance for AI coding agents
 - `docs/BRAND_GUIDELINES.md` — voice and tone
+- `docs/UI_DESIGN_SYSTEM.md` — UI design system
