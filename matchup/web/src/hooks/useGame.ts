@@ -6,7 +6,6 @@ import {
   type MoveResult,
   type FormationName,
   type MoveOption,
-  type MatchEvent,
   type GameMode,
   type GamePhase,
   getValidMoves,
@@ -18,7 +17,6 @@ const AI_MOVE_DELAY = 700;
 
 export function useGame() {
   const engineRef = useRef<Engine | null>(null);
-  const eventsRef = useRef<MatchEvent[]>([]);
   const aiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [phase, setPhase] = useState<GamePhase>('setup');
@@ -71,7 +69,7 @@ export function useGame() {
         return;
       }
 
-      const chosen = aggressiveStrategy(s, 'away', moves, eventsRef.current);
+      const chosen = aggressiveStrategy(s, 'away', moves, s.events);
       if (!chosen) {
         setIsAiThinking(false);
         syncState();
@@ -80,18 +78,6 @@ export function useGame() {
 
       const result = engine.applyMove(chosen.playerId, chosen.to);
       if (result.valid) {
-        const player = s.players.find(p => p.id === chosen.playerId);
-        eventsRef.current.push({
-          moveNumber: eventsRef.current.length + 1,
-          time: s.timeRemaining,
-          type: result.outcome === 'success' ? 'move'
-            : result.outcome === 'intercepted' ? 'interception'
-            : result.outcome === 'tackled' ? 'tackle'
-            : result.outcome === 'tackleFailed' ? 'tackleFailed'
-            : result.outcome,
-          team: 'away',
-          description: `AI: ${player?.name ?? chosen.playerId} ${result.outcome}`,
-        });
         setLastMoveResult(result);
         setState(engine.getState());
 
@@ -116,7 +102,6 @@ export function useGame() {
   const startGame = useCallback((gameMode: GameMode, homeFormation: FormationName, awayFormation: FormationName) => {
     const engine = Engine.init(homeFormation, awayFormation);
     engineRef.current = engine;
-    eventsRef.current = [];
     setMode(gameMode);
     setLastMoveResult(null);
     setIsAiThinking(false);
@@ -139,18 +124,6 @@ export function useGame() {
 
     const result = engineRef.current.applyMove(playerId, to);
     if (!result.valid) return;
-
-    const player = state.players.find(p => p.id === playerId);
-    eventsRef.current.push({
-      moveNumber: eventsRef.current.length + 1,
-      time: state.timeRemaining,
-      type: result.outcome === 'success' ? 'move'
-        : result.outcome === 'intercepted' ? 'interception'
-        : result.outcome === 'tackled' ? 'tackle'
-        : result.outcome,
-      team: state.possession,
-      description: `${player?.name ?? playerId} ${result.outcome}`,
-    });
 
     setLastMoveResult(result);
     const newState = syncState();
@@ -184,7 +157,6 @@ export function useGame() {
       aiTimerRef.current = null;
     }
     engineRef.current = null;
-    eventsRef.current = [];
     setState(null);
     setSelectedPlayerId(null);
     setValidMoves([]);

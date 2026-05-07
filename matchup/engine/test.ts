@@ -1,6 +1,14 @@
 import Engine from './index.js';
 import { initGameState, getBallCarrier } from './formations.js';
-import { validateMove, canMoveTo, classifyMove, checkInterception } from './moves.js';
+import {
+  validateMove,
+  canMoveTo,
+  classifyMove,
+  checkInterception,
+  previewPass,
+  previewTackle,
+  getPassTargets,
+} from './moves.js';
 import {
   posEq,
   gridDistance,
@@ -679,6 +687,213 @@ console.log('\n=== POSSESSION CHANGES MID-GAME ===\n');
   const ns = g2.getState();
   assert(ns.ballCarrierId === 'away_def1', 'ballCarrierId updated to interceptor');
   assert(ns.possession === 'away', 'possession is away after interception');
+}
+
+console.log('\n=== PREVIEW HELPER TESTS ===\n');
+
+// previewTackle is a stable shape with the engine's fixed 0.80 constant.
+{
+  const g = Engine.init();
+  const tp = previewTackle(g.getState(), 'away_def1');
+  assert(tp.successProbability === 0.8, 'previewTackle returns 0.80');
+}
+
+// previewPass should agree with applyMove for a clearly intercepted pass.
+{
+  const g = Engine.init();
+  const c = g.getBallCarrier()!;
+  const s = g.getState();
+  clearOpponents(s, 'home');
+  const teammate = s.players.find((p) => p.id === 'home_mid1')!;
+  teammate.position = { col: 12, row: 'f' };
+  const def = s.players.find((p) => p.id === 'away_def1')!;
+  def.position = { col: 11, row: 'f' };
+
+  const preview = previewPass(s, c.position, { col: 12, row: 'f' }, c.team);
+  assert(preview.intercepted, 'previewPass flags blocked pass as intercepted');
+  assert(preview.lineRisk === 'blocked', 'blocked pass lineRisk is "blocked"');
+  assert(preview.interceptorId === 'away_def1', 'previewPass names the interceptor');
+
+  const g2 = new Engine(s);
+  const result = g2.applyMove(c.id, { col: 12, row: 'f' });
+  assert(
+    (result.outcome === 'intercepted') === preview.intercepted,
+    'previewPass agrees with applyMove on interception'
+  );
+}
+
+// previewPass should mark a clear pass as 'clear' and a near-line defender as 'risk'.
+{
+  const g = Engine.init();
+  const c = g.getBallCarrier()!;
+  const s = g.getState();
+  clearOpponents(s, 'home');
+  const teammate = s.players.find((p) => p.id === 'home_mid1')!;
+  teammate.position = { col: 12, row: 'f' };
+
+  const clear = previewPass(s, c.position, { col: 12, row: 'f' }, c.team);
+  assert(clear.lineRisk === 'clear', 'unobstructed pass lineRisk is "clear"');
+  assert(!clear.intercepted, 'unobstructed pass is not intercepted');
+
+  // Place a defender near the line but outside INTERCEPT_RADIUS (1.2)
+  // and inside the risk band (1.8). Pass runs from c -> (12,f); place
+  // defender at (8, d) — line at col 8 is at row 'f', so distance ~2 rows.
+  // Tighter: defender at (9, e) — distance ~1.5 rows from line at row 'f'.
+  const def = s.players.find((p) => p.id === 'away_def1')!;
+  const startRow = c.position.row;
+  // pick a midpoint column and offset row by ~1.5 from the line.
+  def.position = { col: Math.floor((c.position.col + 12) / 2), row: startRow };
+  // Move the defender 1.5 rows away — but rows are integers, so use 1 row + col stagger.
+  const rowOffset = String.fromCharCode(startRow.charCodeAt(0) + 1);
+  def.position = { col: def.position.col, row: rowOffset };
+
+  const risky = previewPass(s, c.position, { col: 12, row: 'f' }, c.team);
+  assert(
+    risky.lineRisk === 'risk' || risky.lineRisk === 'blocked',
+    'defender near line yields risk or blocked, not clear'
+  );
+}
+
+// previewPass agreement: 100 random passes — preview.intercepted must equal applyMove outcome.
+{
+  let agreements = 0;
+  let trials = 0;
+  for (let i = 0; i < 100; i++) {
+    const g = Engine.init();
+    const c = g.getBallCarrier()!;
+    const s = g.getState();
+    // Pick a random teammate as target
+    const teammates = s.players.filter((p) => p.team === c.team && p.id !== c.id);
+    const target = teammates[i % teammates.length];
+    const preview = previewPass(s, c.position, target.position, c.team);
+    const g2 = new Engine(s);
+    const result = g2.applyMove(c.id, target.position);
+    if (result.valid) {
+      trials++;
+      const wasIntercepted = result.outcome === 'intercepted';
+      if (wasIntercepted === preview.intercepted) agreements++;
+    }
+  }
+  assert(trials > 0, 'preview agreement: had at least one valid pass trial');
+  assert(agreements === trials, `preview agrees with applyMove on all ${trials} trials`);
+}
+
+// getPassTargets enumerates pass-classified teammates and only those.
+{
+  const g = Engine.init();
+  const c = g.getBallCarrier()!;
+  const targets = getPassTargets(g.getState(), c.id);
+  assert(targets.length > 0, 'getPassTargets returns at least one target at kickoff');
+  for (const t of targets) {
+    assert(t.playerId !== c.id, 'getPassTargets never includes the carrier');
+    assert(
+      t.lineRisk === 'clear' || t.lineRisk === 'risk' || t.lineRisk === 'blocked',
+      'getPassTargets lineRisk is well-typed'
+    );
+  }
+}
+
+// getPassTargets returns empty for a non-carrier.
+{
+  const g = Engine.init();
+  const nonCarrier = g.getTeam('away')[0];
+  const targets = getPassTargets(g.getState(), nonCarrier.id);
+  assert(targets.length === 0, 'getPassTargets is empty for a non-carrier');
+}
+
+console.log('\n=== EVENT LOG / STATS / SEED ===\n');
+
+// matchId and seed are populated and stable across getState reads.
+{
+  const g = Engine.init();
+  const s1 = g.getState();
+  const s2 = g.getState();
+  assert(typeof s1.matchId === 'string' && s1.matchId.length > 0, 'matchId is non-empty');
+  assert(typeof s1.seed === 'number', 'seed is a number');
+  assert(s1.matchId === s2.matchId, 'matchId stable across reads');
+  assert(s1.seed === s2.seed, 'seed stable across reads');
+}
+
+// Explicit options propagate.
+{
+  const g = Engine.init('4-3-3', '4-3-3', undefined, { matchId: 'fixed', seed: 42 });
+  const s = g.getState();
+  assert(s.matchId === 'fixed', 'matchId honors options');
+  assert(s.seed === 42, 'seed honors options');
+}
+
+// Events accumulate on applyMove with at least one entry.
+{
+  const g = Engine.init();
+  const c = g.getBallCarrier()!;
+  const before = g.getState().events.length;
+  // Dribble forward one cell
+  const target = { col: c.position.col + 1, row: c.position.row };
+  g.applyMove(c.id, target);
+  const after = g.getState().events.length;
+  assert(after === before + 1, 'event log appends one entry per applyMove');
+  const last = g.getState().events[after - 1];
+  assert(last.playerId === c.id, 'event records playerId');
+  assert(last.team === 'home', 'event records team');
+  assert(last.from?.col === c.position.col, 'event records from.col');
+  assert(last.to?.col === target.col, 'event records to.col');
+}
+
+// Stats: a successful pass increments passes + passesCompleted on the carrier.
+{
+  const g = Engine.init();
+  const c = g.getBallCarrier()!;
+  const s = g.getState();
+  clearOpponents(s, 'home');
+  // Place teammate clearly within pass range with no defenders on line.
+  const teammate = s.players.find((p) => p.id === 'home_mid1')!;
+  teammate.position = { col: c.position.col + 2, row: c.position.row };
+  const g2 = new Engine(s);
+  const result = g2.applyMove(c.id, teammate.position);
+  assert(result.valid && result.outcome !== 'intercepted', 'pass setup completes');
+  const carrierAfter = g2.getState().players.find((p) => p.id === c.id)!;
+  assert(carrierAfter.stats.passes === 1, 'pass increments stats.passes');
+  assert(carrierAfter.stats.passesCompleted === 1, 'completed pass increments stats.passesCompleted');
+}
+
+// Stats: an intercepted pass increments interceptor's interceptions.
+{
+  const g = Engine.init();
+  const c = g.getBallCarrier()!;
+  const s = g.getState();
+  clearOpponents(s, 'home');
+  const teammate = s.players.find((p) => p.id === 'home_mid1')!;
+  teammate.position = { col: 12, row: 'f' };
+  const def = s.players.find((p) => p.id === 'away_def1')!;
+  def.position = { col: 11, row: 'f' };
+  const g2 = new Engine(s);
+  g2.applyMove(c.id, { col: 12, row: 'f' });
+  const interceptor = g2.getState().players.find((p) => p.id === 'away_def1')!;
+  assert(interceptor.stats.interceptions === 1, 'interception increments stats.interceptions');
+}
+
+// Stats: shot on target increments shots + shotsOnTarget; goal increments goals.
+{
+  const g = Engine.init();
+  const c = g.getBallCarrier()!;
+  const s = g.getState();
+  // Park every away non-GK far from the away goal so the shot isn't blocked.
+  let parkRow = 0;
+  for (const p of s.players) {
+    if (p.team === 'away' && p.role !== 'gk') {
+      p.position = { col: 1, row: String.fromCharCode('a'.charCodeAt(0) + (parkRow % 11)) };
+      parkRow++;
+    }
+  }
+  const fwd = s.players.find((p) => p.id === c.id)!;
+  fwd.position = { col: 21, row: 'f' };
+  const g2 = new Engine(s, () => 0);
+  const result = g2.applyMove(c.id, { col: 22, row: 'f' });
+  assert(result.outcome === 'goal', 'shot becomes goal in clear scenario');
+  const scorer = g2.getState().players.find((p) => p.id === c.id)!;
+  assert(scorer.stats.shots === 1, 'shot increments stats.shots');
+  assert(scorer.stats.shotsOnTarget === 1, 'on-target shot increments stats.shotsOnTarget');
+  assert(scorer.stats.goals === 1, 'goal increments stats.goals');
 }
 
 console.log('\n=========================================');

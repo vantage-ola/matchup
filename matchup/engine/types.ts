@@ -9,6 +9,30 @@ export interface GridPosition {
   row: string;
 }
 
+export interface PlayerStats {
+  passes: number;
+  passesCompleted: number;
+  tackles: number;
+  tacklesWon: number;
+  shots: number;
+  shotsOnTarget: number;
+  goals: number;
+  interceptions: number;
+}
+
+export function emptyPlayerStats(): PlayerStats {
+  return {
+    passes: 0,
+    passesCompleted: 0,
+    tackles: 0,
+    tacklesWon: 0,
+    shots: 0,
+    shotsOnTarget: 0,
+    goals: 0,
+    interceptions: 0,
+  };
+}
+
 export interface Player {
   id: string;
   name: string;
@@ -16,9 +40,33 @@ export interface Player {
   team: Team;
   position: GridPosition;
   hasBall: boolean;
+  stats: PlayerStats;
+}
+
+export type MatchEventType =
+  | 'move'
+  | 'pass'
+  | 'tackle'
+  | 'tackleFailed'
+  | 'interception'
+  | 'goal'
+  | 'miss'
+  | 'blocked';
+
+export interface MatchEvent {
+  moveNumber: number;
+  time: number;
+  type: MatchEventType;
+  team: Team;
+  description: string;
+  playerId?: string;
+  from?: GridPosition;
+  to?: GridPosition;
 }
 
 export interface GameState {
+  matchId: string;
+  seed: number;
   players: Player[];
   ball: GridPosition;
   ballCarrierId: string | null;
@@ -29,6 +77,7 @@ export interface GameState {
   homeFormation: FormationName;
   awayFormation: FormationName;
   halfTimeTriggered: boolean;
+  events: MatchEvent[];
 }
 
 export type GameStatus = 'playing' | 'halfTime' | 'fullTime' | 'abandoned';

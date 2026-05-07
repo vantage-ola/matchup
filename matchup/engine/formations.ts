@@ -1,12 +1,13 @@
 import type { Player, FormationName, GridPosition, Team, GameState } from './types.js';
+import { emptyPlayerStats } from './types.js';
 
 export const GAME_DURATION = 5400; // 90 minutes in seconds
 
 export interface FormationPreset {
   name: FormationName;
   description: string;
-  home: Omit<Player, 'hasBall'>[];
-  away: Omit<Player, 'hasBall'>[];
+  home: Omit<Player, 'hasBall' | 'stats'>[];
+  away: Omit<Player, 'hasBall' | 'stats'>[];
 }
 
 export const FORMATIONS: Record<FormationName, FormationPreset> = {
@@ -228,9 +229,21 @@ export function resetPositions(state: GameState): void {
   }
 }
 
+export interface InitOptions {
+  matchId?: string;
+  seed?: number;
+}
+
+let matchCounter = 0;
+function generateMatchId(): string {
+  matchCounter++;
+  return `match_${Date.now().toString(36)}_${matchCounter}`;
+}
+
 export function initGameState(
   homeFormation?: keyof typeof FORMATIONS,
-  awayFormation?: keyof typeof FORMATIONS
+  awayFormation?: keyof typeof FORMATIONS,
+  options?: InitOptions
 ): GameState {
   const homeName = homeFormation || '4-3-3';
   const awayName = awayFormation || homeFormation || '4-3-3';
@@ -239,8 +252,8 @@ export function initGameState(
   const awayPreset = FORMATIONS[awayName];
 
   const allPlayers: Player[] = [
-    ...homePreset.home.map((p) => ({ ...p, hasBall: false })),
-    ...awayPreset.away.map((p) => ({ ...p, hasBall: false })),
+    ...homePreset.home.map((p) => ({ ...p, hasBall: false, stats: emptyPlayerStats() })),
+    ...awayPreset.away.map((p) => ({ ...p, hasBall: false, stats: emptyPlayerStats() })),
   ];
 
   // Give ball to first forward on home team
@@ -252,6 +265,8 @@ export function initGameState(
   const ballCarrier = allPlayers.find((p) => p.hasBall);
 
   return {
+    matchId: options?.matchId ?? generateMatchId(),
+    seed: options?.seed ?? Math.floor(Math.random() * 0x7fffffff),
     players: allPlayers,
     ball: ballCarrier ? { ...ballCarrier.position } : { col: 11, row: 'f' },
     ballCarrierId: ballCarrier?.id || null,
@@ -262,6 +277,7 @@ export function initGameState(
     homeFormation: homeName,
     awayFormation: awayName,
     halfTimeTriggered: false,
+    events: [],
   };
 }
 

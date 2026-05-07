@@ -1,23 +1,17 @@
 import { Engine } from '../engine/index.js';
 import { visualizeGame } from '../engine/render.js';
-import type { GameState, Team, GridPosition, MoveResult, FormationName } from '../engine/types.js';
+import type { GameState, Team, GridPosition, MoveResult, FormationName, MatchEvent } from '../engine/types.js';
 import { validateMove } from '../engine/moves.js';
 import { ROWS, MAX_PASS_DIST } from '../engine/types.js';
 import { GAME_DURATION } from '../engine/formations.js';
 
 // --- TYPES ---
 
+export type { MatchEvent } from '../engine/types.js';
+
 export interface MoveOption {
   playerId: string;
   to: GridPosition;
-}
-
-export interface MatchEvent {
-  moveNumber: number;
-  time: number; // seconds remaining
-  type: 'move' | 'pass' | 'tackle' | 'tackleFailed' | 'interception' | 'goal' | 'miss' | 'blocked';
-  team: Team;
-  description: string;
 }
 
 export interface SimulationResult {
@@ -193,7 +187,6 @@ export class Simulator {
 
   run(): SimulationResult {
     const engine = Engine.init(this.config.homeFormation, this.config.awayFormation);
-    const events: MatchEvent[] = [];
     let moveCount = 0;
 
     if (this.config.verbose) {
@@ -218,38 +211,15 @@ export class Simulator {
       const validMoves = getValidMoves(state, possession);
       if (validMoves.length === 0) break;
 
-      const chosenMove = strategy(state, possession, validMoves, events);
+      const chosenMove = strategy(state, possession, validMoves, state.events);
       if (!chosenMove) break;
 
       const result: MoveResult = engine.applyMove(chosenMove.playerId, chosenMove.to);
 
-      if (result.valid) {
-        const player = state.players.find(p => p.id === chosenMove.playerId);
-        let desc = '';
-        
-        switch (result.outcome) {
-          case 'goal': desc = `⚽ GOAL! ${player?.name} scores!`; break;
-          case 'tackled': desc = `🛡️ Tackle on ${player?.name}`; break;
-          case 'intercepted': desc = `🤚 Pass by ${player?.name} intercepted`; break;
-          case 'blocked': desc = `🚫 Shot by ${player?.name} blocked`; break;
-          case 'miss': desc = `💨 Shot by ${player?.name} misses`; break;
-          default: desc = `${player?.name} moves`;
-        }
-
-        events.push({
-          moveNumber: moveCount,
-          time: state.timeRemaining,
-          type: result.outcome === 'success' ? 'move'
-             : result.outcome === 'intercepted' ? 'interception'
-             : result.outcome === 'tackled' ? 'tackle'
-             : result.outcome === 'tackleFailed' ? 'tackleFailed'
-             : result.outcome,
-          team: possession,
-          description: desc,
-        });
-
-        if (this.config.verbose) {
-          console.log(`\n[${state.timeRemaining}s] ${desc}`);
+      if (result.valid && this.config.verbose) {
+        const latest = result.newState.events[result.newState.events.length - 1];
+        if (latest) {
+          console.log(`\n[${result.newState.timeRemaining}s] ${latest.description}`);
           console.log(visualizeGame(result.newState));
         }
       }
@@ -258,7 +228,7 @@ export class Simulator {
     const finalState = engine.getState();
     return {
       finalState,
-      events,
+      events: finalState.events,
       score: finalState.score,
       status: finalState.status === 'fullTime' ? 'fullTime' : 'abandoned',
     };

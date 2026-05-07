@@ -1,4 +1,4 @@
-import type { GameState, MoveResult, Outcome, Player, GridPosition, Team, MoveType } from './types.js';
+import type { GameState, MatchEvent, MatchEventType, MoveResult, Outcome, Player, GridPosition, Team, MoveType } from './types.js';
 import {
   initGameState,
   getPlayer,
@@ -8,6 +8,7 @@ import {
   getFormation,
   FORMATIONS,
   resetPositions,
+  type InitOptions,
 } from './formations.js';
 
 import {
@@ -17,9 +18,67 @@ import {
 } from './moves.js';
 import { gridDistance, HALF_TIME_THRESHOLD, rowToNum } from './types.js';
 
+function describeOutcome(player: Player, outcome: Outcome, moveLabel: MoveType): string {
+  switch (outcome) {
+    case 'goal':
+      return `GOAL — ${player.name} scores`;
+    case 'miss':
+      return `${player.name} shoots wide`;
+    case 'blocked':
+      return `${player.name}'s shot is blocked`;
+    case 'tackled':
+      return `${player.name} wins the tackle`;
+    case 'tackleFailed':
+      return `${player.name}'s tackle missed`;
+    case 'intercepted':
+      return `${player.name}'s pass intercepted`;
+    default:
+      return `${player.name} ${moveLabel === 'pass' ? 'passes' : 'moves'}`;
+  }
+}
+
+function outcomeToEventType(outcome: Outcome, moveLabel: MoveType): MatchEventType {
+  switch (outcome) {
+    case 'goal':
+      return 'goal';
+    case 'miss':
+      return 'miss';
+    case 'blocked':
+      return 'blocked';
+    case 'tackled':
+      return 'tackle';
+    case 'tackleFailed':
+      return 'tackleFailed';
+    case 'intercepted':
+      return 'interception';
+    default:
+      return moveLabel === 'pass' ? 'pass' : 'move';
+  }
+}
+
 const MOVE_TIME = 10; // seconds per move
 
 export { listFormations, getFormation, FORMATIONS };
+export {
+  previewPass,
+  previewTackle,
+  getPassTargets,
+  classifyMove,
+  validateMove,
+  checkInterception,
+} from './moves.js';
+export type {
+  PassPreview,
+  TacklePreview,
+  PassTarget,
+  LineRisk,
+} from './moves.js';
+export type {
+  MatchEvent,
+  MatchEventType,
+  PlayerStats,
+} from './types.js';
+export { emptyPlayerStats } from './types.js';
 
 export class Engine {
   private state: GameState;
@@ -228,6 +287,42 @@ export class Engine {
     // ---- UPDATE TIME ----
     newState.timeRemaining = Math.max(0, newState.timeRemaining - MOVE_TIME);
 
+    // ---- PER-PLAYER STATS ----
+    const moverAfter = newState.players.find((p) => p.id === playerId)!;
+    if (moveTypeLabel === 'pass') {
+      moverAfter.stats.passes++;
+      if (outcome !== 'intercepted') moverAfter.stats.passesCompleted++;
+      if (outcome === 'intercepted' && newBallCarrier) {
+        const interceptor = newState.players.find((p) => p.id === newBallCarrier.id);
+        if (interceptor) interceptor.stats.interceptions++;
+      }
+    } else if (moveTypeLabel === 'shoot') {
+      moverAfter.stats.shots++;
+      const targetGoal = player.team === 'home' ? 22 : 1;
+      if (to.col === targetGoal && to.row >= 'e' && to.row <= 'g') {
+        moverAfter.stats.shotsOnTarget++;
+      }
+      if (outcome === 'goal') moverAfter.stats.goals++;
+    } else if (moveTypeLabel === 'tackle') {
+      moverAfter.stats.tackles++;
+      if (outcome === 'tackled') moverAfter.stats.tacklesWon++;
+    }
+
+    // ---- EVENT LOG ----
+    const eventType = outcomeToEventType(outcome, moveTypeLabel);
+    const description = describeOutcome(player, outcome, moveTypeLabel);
+    const event: MatchEvent = {
+      moveNumber: newState.events.length + 1,
+      time: newState.timeRemaining,
+      type: eventType,
+      team: player.team,
+      description,
+      playerId,
+      from: { ...player.position },
+      to: { ...to },
+    };
+    newState.events.push(event);
+
     // ---- GAME END ----
     if (newState.timeRemaining <= 0) {
       newState.status = 'fullTime';
@@ -263,9 +358,10 @@ export class Engine {
   static init(
     homeFormation?: keyof typeof FORMATIONS,
     awayFormation?: keyof typeof FORMATIONS,
-    rng?: () => number
+    rng?: () => number,
+    options?: InitOptions
   ): Engine {
-    return new Engine(initGameState(homeFormation, awayFormation), rng);
+    return new Engine(initGameState(homeFormation, awayFormation, options), rng);
   }
 
   static listFormations() {

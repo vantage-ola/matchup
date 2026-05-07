@@ -1,4 +1,15 @@
-export { Engine, listFormations, FORMATIONS } from '@engine/index.js';
+export {
+  Engine,
+  listFormations,
+  FORMATIONS,
+  previewPass,
+  previewTackle,
+  getPassTargets,
+  type PassPreview,
+  type TacklePreview,
+  type PassTarget,
+  type LineRisk,
+} from '@engine/index.js';
 export {
   type GameState,
   type Player,

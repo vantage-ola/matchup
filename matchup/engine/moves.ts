@@ -1,4 +1,4 @@
-import type { GameState, Player, GridPosition, Team } from './types.js';
+import type { GameState, GridPosition, Player, Team } from './types.js';
 import {
   posEq,
   rowToNum,
@@ -8,6 +8,28 @@ import {
   INTERCEPT_RADIUS,
 } from './types.js';
 import { getPlayer, getBallCarrier, getPlayerAt, getTeamPlayers } from './formations.js';
+
+// UI-only "close call" multiplier — defenders within this many radii of the
+// pass line are flagged as risky even when the engine wouldn't intercept.
+const RISK_RADIUS_MULTIPLIER = 1.5;
+
+export type LineRisk = 'clear' | 'risk' | 'blocked';
+
+export interface PassPreview {
+  intercepted: boolean;
+  interceptorId: string | null;
+  lineRisk: LineRisk;
+}
+
+export interface TacklePreview {
+  successProbability: number;
+}
+
+export interface PassTarget {
+  playerId: string;
+  to: GridPosition;
+  lineRisk: LineRisk;
+}
 
 export interface MoveError {
   valid: false;
@@ -181,4 +203,104 @@ export function checkInterception(
   }
 
   return { intercepted: false, interceptorId: null };
+}
+
+/**
+ * Read-only preview for a pass from `from` to `to`. Wraps `checkInterception`
+ * with a UI-friendly `lineRisk` heuristic so the readability layer can paint
+ * green/yellow/red lanes without recomputing geometry.
+ */
+export function previewPass(
+  state: GameState,
+  from: GridPosition,
+  to: GridPosition,
+  passingTeam: Team
+): PassPreview {
+  const intercept = checkInterception(state, from, to, passingTeam);
+  if (intercept.intercepted) {
+    return {
+      intercepted: true,
+      interceptorId: intercept.interceptorId,
+      lineRisk: 'blocked',
+    };
+  }
+
+  const defenders = getTeamPlayers(state, passingTeam === 'home' ? 'away' : 'home')
+    .filter((d) => !d.hasBall);
+
+  const passLenSq =
+    Math.pow(to.col - from.col, 2) +
+    Math.pow(rowToNum(to.row) - rowToNum(from.row), 2);
+
+  if (passLenSq < 0.01) {
+    return { intercepted: false, interceptorId: null, lineRisk: 'clear' };
+  }
+
+  const riskRadius = INTERCEPT_RADIUS * RISK_RADIUS_MULTIPLIER;
+
+  for (const def of defenders) {
+    const t = Math.max(
+      0,
+      Math.min(
+        1,
+        ((def.position.col - from.col) * (to.col - from.col) +
+          (rowToNum(def.position.row) - rowToNum(from.row)) *
+            (rowToNum(to.row) - rowToNum(from.row))) /
+          passLenSq
+      )
+    );
+    const projCol = from.col + t * (to.col - from.col);
+    const projRow = rowToNum(from.row) + t * (rowToNum(to.row) - rowToNum(from.row));
+    const dist = Math.sqrt(
+      Math.pow(def.position.col - projCol, 2) +
+        Math.pow(rowToNum(def.position.row) - projRow, 2)
+    );
+    if (dist < riskRadius) {
+      return { intercepted: false, interceptorId: null, lineRisk: 'risk' };
+    }
+  }
+
+  return { intercepted: false, interceptorId: null, lineRisk: 'clear' };
+}
+
+/**
+ * Read-only preview for a tackle attempt. The 0.80 success rate is a fixed
+ * engine constant today; exposing it here lets the UI render a "80%" badge
+ * without duplicating the literal, and gives future per-player attributes a
+ * single point to flow through.
+ */
+export function previewTackle(
+  _state: GameState,
+  _attackerId: string
+): TacklePreview {
+  return { successProbability: 0.8 };
+}
+
+/**
+ * Enumerate every legal pass target for the given player along with the
+ * lane's risk level. Returns an empty array if the player isn't on the ball
+ * or can't legally pass.
+ */
+export function getPassTargets(
+  state: GameState,
+  playerId: string
+): PassTarget[] {
+  const player = getPlayer(state, playerId);
+  if (!player) return [];
+  const carrier = getBallCarrier(state);
+  if (!carrier || carrier.id !== player.id) return [];
+
+  const targets: PassTarget[] = [];
+  for (const teammate of getTeamPlayers(state, player.team)) {
+    if (teammate.id === player.id) continue;
+    if (classifyMove(state, player, teammate.position) !== 'pass') continue;
+    if (!canMoveTo(state, player, teammate.position)) continue;
+    const preview = previewPass(state, player.position, teammate.position, player.team);
+    targets.push({
+      playerId: teammate.id,
+      to: teammate.position,
+      lineRisk: preview.lineRisk,
+    });
+  }
+  return targets;
 }
