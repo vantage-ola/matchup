@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useGame } from '@/hooks/useGame';
 import type { FormationName } from '@/lib/engine';
 import { SetupScreen } from '@/components/setup/SetupScreen';
@@ -12,7 +12,24 @@ export function App() {
     home: '4-3-3',
     away: '4-3-3',
   });
+  const [lastMode, setLastMode] = useState<'local' | 'ai'>('local');
   const [showRulebook, setShowRulebook] = useState(false);
+
+  const handleStart = useCallback(
+    (mode: 'local' | 'ai', home: FormationName, away: FormationName) => {
+      setFormations({ home, away });
+      setLastMode(mode);
+      game.startGame(mode, home, away);
+    },
+    [game],
+  );
+
+  const handleRematch = useCallback(() => {
+    // Swap home/away formations and restart with same mode
+    const swapped = { home: formations.away, away: formations.home };
+    setFormations(swapped);
+    game.startGame(lastMode, swapped.home, swapped.away);
+  }, [formations, lastMode, game]);
 
   if (showRulebook) {
     return <RulebookScreen onBack={() => setShowRulebook(false)} />;
@@ -21,10 +38,7 @@ export function App() {
   if (game.phase === 'setup') {
     return (
       <SetupScreen
-        onStart={(mode, home, away) => {
-          setFormations({ home, away });
-          game.startGame(mode, home, away);
-        }}
+        onStart={handleStart}
         onShowRulebook={() => setShowRulebook(true)}
       />
     );
@@ -37,6 +51,7 @@ export function App() {
         homeFormation={formations.home}
         awayFormation={formations.away}
         onPlayAgain={game.resetGame}
+        onRematch={handleRematch}
       />
     );
   }
@@ -52,6 +67,7 @@ export function App() {
         selectedPlayerMoves={game.selectedPlayerMoves}
         lastMoveResult={game.lastMoveResult}
         isAiThinking={game.isAiThinking}
+        ballHistory={game.ballHistory}
         onSelectPlayer={game.selectPlayer}
         onExecuteMove={game.executeMove}
         onDeselect={game.deselectPlayer}

@@ -10,6 +10,7 @@ import {
 import { Pitch } from './Pitch';
 import { ScoreBar } from './ScoreBar';
 import { MoveResultBar } from './MoveResultBar';
+import { MatchHud } from './MatchHud';
 import { RotateDeviceOverlay } from '@/components/RotateDeviceOverlay';
 import { RulebookDialog } from '@/components/rulebook/RulebookDialog';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -23,6 +24,7 @@ interface GameScreenProps {
   selectedPlayerMoves: Set<string>;
   lastMoveResult: MoveResult | null;
   isAiThinking: boolean;
+  ballHistory?: GridPosition[];
   onSelectPlayer: (playerId: string) => void;
   onExecuteMove: (playerId: string, to: GridPosition) => void;
   onDeselect: () => void;
@@ -39,6 +41,7 @@ export function GameScreen({
   selectedPlayerMoves,
   lastMoveResult,
   isAiThinking,
+  ballHistory,
   onSelectPlayer,
   onExecuteMove,
   onDeselect,
@@ -47,11 +50,20 @@ export function GameScreen({
 }: GameScreenProps) {
   const [paused, setPaused] = useState(false);
   const [showLanes, setShowLanes] = useState(() => loadSettings().passingLanes);
+  const [showZones, setShowZones] = useState(() => loadSettings().tackleZones);
 
   const toggleLanes = () => {
     setShowLanes((prev) => {
       const next = !prev;
       updateSettings({ passingLanes: next });
+      return next;
+    });
+  };
+
+  const toggleZones = () => {
+    setShowZones((prev) => {
+      const next = !prev;
+      updateSettings({ tackleZones: next });
       return next;
     });
   };
@@ -140,11 +152,23 @@ export function GameScreen({
           variant="ghost"
           size="sm"
           className="h-14 px-3 text-xs text-muted-foreground"
+          aria-pressed={showZones}
+          aria-label="Toggle tackle zones"
+          onClick={toggleZones}
+        >
+          {showZones ? 'ZONES ON' : 'ZONES OFF'}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-14 px-3 text-xs text-muted-foreground"
           onClick={() => setPaused(true)}
         >
           PAUSE
         </Button>
       </div>
+
+      <MatchHud state={state} />
 
       <div className="relative flex-1 min-h-0 flex items-center">
         <div className="w-full">
@@ -155,6 +179,9 @@ export function GameScreen({
             isAiThinking={isAiThinking}
             failedTacklerId={animTacklerId}
             showPassingLanes={showLanes}
+            showTackleZones={showZones}
+            ballHistory={ballHistory}
+            lastMoveResult={lastMoveResult}
             onSelectPlayer={onSelectPlayer}
             onExecuteMove={onExecuteMove}
             onDeselect={onDeselect}

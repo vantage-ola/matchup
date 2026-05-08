@@ -12,8 +12,10 @@ import {
   aggressiveStrategy,
   posToString,
 } from '@/lib/engine';
+import { play } from '@/lib/sfx';
 
 const AI_MOVE_DELAY = 700;
+const BALL_HISTORY_LIMIT = 3;
 
 export function useGame() {
   const engineRef = useRef<Engine | null>(null);
@@ -27,6 +29,37 @@ export function useGame() {
   const [selectedPlayerMoves, setSelectedPlayerMoves] = useState<Set<string>>(new Set());
   const [lastMoveResult, setLastMoveResult] = useState<MoveResult | null>(null);
   const [isAiThinking, setIsAiThinking] = useState(false);
+  const [ballHistory, setBallHistory] = useState<GridPosition[]>([]);
+
+  const playOutcomeSfx = useCallback((result: MoveResult) => {
+    if (!result.valid) return;
+    switch (result.outcome) {
+      case 'goal':         play('goal'); break;
+      case 'miss':         play('kick'); break;
+      case 'intercepted':  play('blip'); break;
+      case 'blocked':      play('blip'); break;
+      case 'tackled':      play('tackle'); break;
+      case 'tackleFailed': play('tackleFail'); break;
+      case 'success':
+        if (result.move?.type === 'pass') play('pass');
+        else if (result.move?.type === 'shoot') play('kick');
+        break;
+    }
+  }, []);
+
+  const recordBallHistory = useCallback((result: MoveResult, prevBall: GridPosition | null) => {
+    if (!result.valid) return;
+    if (result.outcome === 'goal') {
+      setBallHistory([]);
+      return;
+    }
+    if (!prevBall) return;
+    setBallHistory((prev) => {
+      const next = [...prev, prevBall];
+      if (next.length > BALL_HISTORY_LIMIT) next.shift();
+      return next;
+    });
+  }, []);
 
   const syncState = useCallback(() => {
     if (!engineRef.current) return;
@@ -41,8 +74,12 @@ export function useGame() {
 
   const checkGameOver = useCallback((s: GameState) => {
     if (s.status === 'fullTime') {
+      play('whistle');
       setPhase('fullTime');
       return true;
+    }
+    if (s.status === 'halfTime') {
+      play('whistle');
     }
     return false;
   }, []);
@@ -76,8 +113,11 @@ export function useGame() {
         return;
       }
 
+      const prevBall = s.ball;
       const result = engine.applyMove(chosen.playerId, chosen.to);
       if (result.valid) {
+        playOutcomeSfx(result);
+        recordBallHistory(result, prevBall);
         setLastMoveResult(result);
         setState(engine.getState());
 
@@ -97,7 +137,7 @@ export function useGame() {
     };
 
     aiTimerRef.current = setTimeout(step, AI_MOVE_DELAY);
-  }, [syncState, checkGameOver]);
+  }, [syncState, checkGameOver, recordBallHistory, playOutcomeSfx]);
 
   const startGame = useCallback((gameMode: GameMode, homeFormation: FormationName, awayFormation: FormationName) => {
     const engine = Engine.init(homeFormation, awayFormation);
@@ -105,6 +145,7 @@ export function useGame() {
     setMode(gameMode);
     setLastMoveResult(null);
     setIsAiThinking(false);
+    setBallHistory([]);
     syncState();
     setPhase('playing');
   }, [syncState]);
@@ -122,9 +163,12 @@ export function useGame() {
   const executeMove = useCallback((playerId: string, to: GridPosition) => {
     if (!engineRef.current || !state || isAiThinking) return;
 
+    const prevBall = state.ball;
     const result = engineRef.current.applyMove(playerId, to);
     if (!result.valid) return;
 
+    playOutcomeSfx(result);
+    recordBallHistory(result, prevBall);
     setLastMoveResult(result);
     const newState = syncState();
     if (!newState) return;
@@ -134,7 +178,7 @@ export function useGame() {
     if (mode === 'ai' && newState.possession === 'away' && newState.status === 'playing') {
       playAiTurn();
     }
-  }, [state, isAiThinking, mode, syncState, checkGameOver, playAiTurn]);
+  }, [state, isAiThinking, mode, syncState, checkGameOver, playAiTurn, recordBallHistory]);
 
   const deselectPlayer = useCallback(() => {
     setSelectedPlayerId(null);
@@ -144,6 +188,7 @@ export function useGame() {
   const resumeFromHalfTime = useCallback(() => {
     if (!engineRef.current) return;
     engineRef.current.resumeFromHalfTime();
+    setBallHistory([]);
     const newState = syncState();
     if (!newState) return;
     if (mode === 'ai' && newState.possession === 'away' && newState.status === 'playing') {
@@ -163,6 +208,7 @@ export function useGame() {
     setSelectedPlayerMoves(new Set());
     setLastMoveResult(null);
     setIsAiThinking(false);
+    setBallHistory([]);
     setPhase('setup');
     setMode('local');
   }, []);
@@ -176,6 +222,7 @@ export function useGame() {
     selectedPlayerMoves,
     lastMoveResult,
     isAiThinking,
+    ballHistory,
     startGame,
     selectPlayer,
     executeMove,

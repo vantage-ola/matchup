@@ -1,17 +1,26 @@
 import { useEffect, useState } from 'react';
-import type { MoveResult } from '@/lib/engine';
+import { Goal, Shield, ShieldX, Swords, Target, Footprints, Zap } from 'lucide-react';
+import type { MoveResult, Outcome } from '@/lib/engine';
 
 interface MoveResultBarProps {
   result: MoveResult | null;
 }
 
-const OUTCOME_LABELS: Record<string, string> = {
-  success: 'Move',
-  intercepted: 'Intercepted!',
-  blocked: 'Blocked!',
-  tackled: 'Tackle!',
-  goal: 'GOAL!',
-  miss: 'Miss!',
+interface OutcomeStyle {
+  label: string;
+  bg: string;
+  fg: string;
+  Icon: React.ComponentType<{ size?: number; className?: string }>;
+}
+
+const OUTCOME_STYLE: Record<Outcome, OutcomeStyle> = {
+  goal: { label: 'GOAL!', bg: '#16a34a', fg: '#ffffff', Icon: Goal },
+  miss: { label: 'Miss!', bg: '#525252', fg: '#ffffff', Icon: Target },
+  intercepted: { label: 'Intercepted!', bg: '#dc2626', fg: '#ffffff', Icon: ShieldX },
+  blocked: { label: 'Blocked!', bg: '#dc2626', fg: '#ffffff', Icon: Shield },
+  tackled: { label: 'Tackle won!', bg: '#16a34a', fg: '#ffffff', Icon: Swords },
+  tackleFailed: { label: 'Tackle missed', bg: '#525252', fg: '#ffffff', Icon: Swords },
+  success: { label: 'Move', bg: 'rgba(0,0,0,0.75)', fg: '#ffffff', Icon: Footprints },
 };
 
 export function MoveResultBar({ result }: MoveResultBarProps) {
@@ -26,18 +35,24 @@ export function MoveResultBar({ result }: MoveResultBarProps) {
 
   if (!result || !visible) return null;
 
-  const isGoal = result.outcome === 'goal';
+  const style = OUTCOME_STYLE[result.outcome] ?? OUTCOME_STYLE.success;
+  const isPass = result.move?.type === 'pass' && result.outcome === 'success';
+  const label = isPass ? 'Pass complete' : style.label;
+  const Icon = isPass ? Zap : style.Icon;
 
   return (
     <div
-      className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-md px-4 py-1.5 text-sm font-bold transition-opacity duration-300"
+      role="status"
+      aria-live="polite"
+      className="absolute bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-md px-4 py-1.5 text-sm font-bold transition-opacity duration-300"
       style={{
-        backgroundColor: isGoal ? '#22c55e' : 'rgba(0,0,0,0.75)',
-        color: '#fff',
+        backgroundColor: style.bg,
+        color: style.fg,
         opacity: visible ? 1 : 0,
       }}
     >
-      {OUTCOME_LABELS[result.outcome] ?? result.outcome}
+      <Icon size={16} className="shrink-0" />
+      <span>{label}</span>
     </div>
   );
 }
