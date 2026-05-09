@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { loadSettings, updateSettings } from '@/lib/settings';
 import {
@@ -50,6 +51,7 @@ export function GameScreen({
   onQuit,
 }: GameScreenProps) {
   const [paused, setPaused] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [showLanes, setShowLanes] = useState(() => loadSettings().passingLanes);
   const [showZones, setShowZones] = useState(() => loadSettings().tackleZones);
 
@@ -119,46 +121,71 @@ export function GameScreen({
   return (
     <>
     <RotateDeviceOverlay />
-    <div className="flex h-dvh flex-col md:flex-row gap-4 p-2 md:p-4 bg-background">
+    <div className="flex h-dvh flex-col md:flex-row gap-4 p-2 md:p-4 bg-background overflow-hidden">
       {/* ── Left Column (70%): Pitch Area ── */}
-      <div className="flex flex-1 md:w-[70%] flex-col gap-2 min-w-0">
+      <div className={`flex flex-1 flex-col gap-2 min-w-0 transition-all duration-300 ${isFullscreen ? 'md:w-full' : 'md:w-[70%]'}`}>
         <div className="flex items-center gap-2">
           <div className="flex-1 min-w-0">
             <ScoreBar state={state} homeFormation={homeFormation} awayFormation={awayFormation} />
           </div>
+          
+          {/* Fullscreen toggle for desktop */}
+          <div className="hidden md:flex items-center">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              className="text-muted-foreground hover:text-foreground"
+              title={isFullscreen ? "Show Sidebar" : "Hide Sidebar"}
+            >
+              {isFullscreen ? <PanelRightOpen size={20} /> : <PanelRightClose size={20} />}
+            </Button>
+          </div>
+
           <div className="md:hidden flex items-center gap-1">
              <ThemeToggle />
              <Button variant="ghost" size="icon" onClick={() => setPaused(true)}>⏸</Button>
           </div>
         </div>
-
-        <MatchHud state={state} />
-
-        <div className="relative flex-1 min-h-0 flex items-center justify-center">
-          <div className="w-full">
-            <Pitch
-              state={state}
-              selectedPlayerId={selectedPlayerId}
-              selectedPlayerMoves={selectedPlayerMoves}
-              isAiThinking={isAiThinking}
-              failedTacklerId={animTacklerId}
-              showPassingLanes={showLanes}
-              showTackleZones={showZones}
-              ballHistory={ballHistory}
-              lastMoveResult={lastMoveResult}
-              onSelectPlayer={onSelectPlayer}
-              onExecuteMove={onExecuteMove}
-              onDeselect={onDeselect}
-            />
-            <MoveResultBar result={lastMoveResult} />
+        <div className="relative z-10 shrink-0 mb-3">
+          <MatchHud state={state} />
+        </div>
+        <div className="relative flex-1 min-h-0 w-full flex items-center justify-center pb-2">
+          <div 
+            className="relative" 
+            style={{ 
+              aspectRatio: '22/11',
+              width: '10000px', /* Absurdly large basis */
+              maxWidth: '100%', /* Constrain to parent width */
+              maxHeight: '100%', /* Constrain to parent height */
+            }}
+          >
+            <div className="absolute inset-0">
+              <Pitch
+                state={state}
+                selectedPlayerId={selectedPlayerId}
+                selectedPlayerMoves={selectedPlayerMoves}
+                isAiThinking={isAiThinking}
+                failedTacklerId={animTacklerId}
+                showPassingLanes={showLanes}
+                showTackleZones={showZones}
+                ballHistory={ballHistory}
+                lastMoveResult={lastMoveResult}
+                onSelectPlayer={onSelectPlayer}
+                onExecuteMove={onExecuteMove}
+                onDeselect={onDeselect}
+              />
+              <MoveResultBar result={lastMoveResult} />
+            </div>
           </div>
         </div>
       </div>
 
       {/* ── Right Column (30%): Controls Area ── */}
-      <div className="hidden md:flex flex-col w-[30%] min-w-[260px] shrink-0 border-l border-border pl-4">
-        <div className="flex min-h-[5rem] items-center justify-center rounded-lg bg-card border border-border p-4 text-center">
-          <p className="text-sm font-bold tracking-wider uppercase text-card-foreground">
+      {!isFullscreen && (
+        <div className="hidden md:flex flex-col w-[30%] min-w-[260px] shrink-0 border-l border-border pl-4 animate-in fade-in slide-in-from-right-4 duration-300">
+          <div className="flex min-h-[5rem] items-center justify-center rounded-lg bg-card border border-border p-4 text-center">
+            <p className="text-sm font-bold tracking-wider uppercase text-card-foreground">
             {isAiThinking ? (
               <span className="animate-pulse">AI thinking...</span>
             ) : selectedPlayerId ? (
@@ -209,6 +236,7 @@ export function GameScreen({
           </div>
         </div>
       </div>
+      )}
 
       {/* Mobile status bar (visible only on small screens) */}
       <div className="md:hidden flex h-10 items-center justify-center gap-2 rounded-lg bg-card px-2 text-sm text-card-foreground border border-border">

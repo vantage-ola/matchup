@@ -46,53 +46,45 @@ export function MatchHud({ state }: MatchHudProps) {
   const stoppageMinute = Math.ceil(state.timeRemaining / 60);
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1.5">
       {/* Possession bar */}
-      <div className="flex items-center gap-1.5 rounded bg-card/60 px-2 py-1">
-        <span className="text-[9px] font-bold tabular-nums text-foreground/80">
+      <div className="flex items-center gap-2 rounded bg-card px-3 py-1.5 border border-border">
+        <span className="text-[10px] font-bold tabular-nums text-foreground">
           {possession.home}%
         </span>
-        <div className="relative flex h-[5px] flex-1 overflow-hidden rounded-full bg-muted/40">
+        <div className="relative flex h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
           <div
-            className="h-full rounded-full transition-all duration-500 ease-out"
-            style={{
-              width: `${possession.home}%`,
-              background: 'rgba(255,255,255,0.85)',
-            }}
+            className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
+            style={{ width: `${possession.home}%` }}
           />
           <div
-            className="h-full rounded-full transition-all duration-500 ease-out"
-            style={{
-              width: `${possession.away}%`,
-              background: 'rgba(225,29,72,0.75)',
-            }}
+            className="h-full rounded-full bg-destructive/90 transition-all duration-500 ease-out"
+            style={{ width: `${possession.away}%` }}
           />
         </div>
-        <span className="text-[9px] font-bold tabular-nums text-foreground/80">
+        <span className="text-[10px] font-bold tabular-nums text-foreground">
           {possession.away}%
         </span>
       </div>
 
       {/* Stats row */}
-      <div className="flex items-center justify-between rounded bg-card/60 px-2 py-0.5 text-[9px] font-semibold text-muted-foreground">
-        <div className="flex items-center gap-3">
-          <span className="tabular-nums">{homeStats.passes} PAS</span>
-          <span className="tabular-nums">{homeStats.shots} SHO</span>
-          <span className="tabular-nums">{homeStats.shotsOnTarget} SOT</span>
+      <div className="flex items-center justify-between rounded bg-card px-3 py-1.5 border border-border text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+        <div className="flex items-center gap-3 md:gap-4">
+          <span className="tabular-nums text-foreground">{homeStats.passes} <span className="text-muted-foreground/70">PAS</span></span>
+          <span className="tabular-nums text-foreground">{homeStats.shots} <span className="text-muted-foreground/70">SHO</span></span>
+          <span className="tabular-nums text-foreground">{homeStats.shotsOnTarget} <span className="text-muted-foreground/70">SOT</span></span>
         </div>
 
         {isStoppage && (
-          <span
-            className="rounded bg-destructive/90 px-1.5 py-0.5 text-[9px] font-bold text-white animate-pulse"
-          >
+          <span className="rounded bg-destructive px-1.5 py-0.5 text-[9px] font-black text-destructive-foreground animate-pulse">
             +{stoppageMinute}
           </span>
         )}
 
-        <div className="flex items-center gap-3">
-          <span className="tabular-nums">{awayStats.passes} PAS</span>
-          <span className="tabular-nums">{awayStats.shots} SHO</span>
-          <span className="tabular-nums">{awayStats.shotsOnTarget} SOT</span>
+        <div className="flex items-center gap-3 md:gap-4">
+          <span className="tabular-nums text-foreground"><span className="text-muted-foreground/70">PAS</span> {awayStats.passes}</span>
+          <span className="tabular-nums text-foreground"><span className="text-muted-foreground/70">SHO</span> {awayStats.shots}</span>
+          <span className="tabular-nums text-foreground"><span className="text-muted-foreground/70">SOT</span> {awayStats.shotsOnTarget}</span>
         </div>
       </div>
     </div>
