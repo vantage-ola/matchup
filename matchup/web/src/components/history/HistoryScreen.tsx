@@ -7,6 +7,7 @@ import { getMatchHistory, type MatchRecord } from '@/lib/storage';
 
 interface HistoryScreenProps {
   onBack: () => void;
+  onReplay?: (match: MatchRecord) => void;
 }
 
 function formatDate(ts: number): string {
@@ -14,7 +15,7 @@ function formatDate(ts: number): string {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-export function HistoryScreen({ onBack }: HistoryScreenProps) {
+export function HistoryScreen({ onBack, onReplay }: HistoryScreenProps) {
   const [history, setHistory] = useState<MatchRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -54,7 +55,12 @@ export function HistoryScreen({ onBack }: HistoryScreenProps) {
                 : match.result === 'loss' ? 'destructive' as const
                 : 'secondary' as const;
               return (
-                <Card key={match.matchId + i} size="sm" className="py-3">
+                <Card
+                  key={match.matchId + i}
+                  size="sm"
+                  className={onReplay ? 'cursor-pointer py-3 transition-colors hover:bg-muted/40' : 'py-3'}
+                  onClick={onReplay ? () => onReplay(match) : undefined}
+                >
                   <CardContent className="flex items-center gap-3 py-0">
                     <Badge variant={variant} className="w-5 justify-center">
                       {match.result === 'win' ? 'W' : match.result === 'loss' ? 'L' : 'D'}

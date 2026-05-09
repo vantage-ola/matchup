@@ -97,6 +97,11 @@ export async function getMatchHistory(): Promise<MatchRecord[]> {
   return data ?? [];
 }
 
+export async function loadMatchById(matchId: string): Promise<MatchRecord | null> {
+  const history = await getMatchHistory();
+  return history.find((m) => m.matchId === matchId) ?? null;
+}
+
 // ─── Player profile (IndexedDB) ─────────────────────────────────────────
 
 const PROFILE_KEY = 'matchup.profile.v1';
