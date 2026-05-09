@@ -1,6 +1,5 @@
 import {
   type GridPosition,
-  ROWS,
   rowToNum,
 } from '@/lib/engine';
 
@@ -8,14 +7,11 @@ interface GhostTrailProps {
   history: GridPosition[];
 }
 
-const COLS_COUNT = 22;
-const ROWS_COUNT = ROWS.length;
-
 function cellCenter(col: number, row: string): { x: number; y: number } {
-  const x = ((col - 0.5) / COLS_COUNT) * 100;
-  const rIdx = rowToNum(row);
-  const y = ((rIdx + 0.5) / ROWS_COUNT) * 100;
-  return { x, y };
+  return {
+    x: (col - 0.5) * 10,
+    y: (rowToNum(row) + 0.5) * 10,
+  };
 }
 
 const ALPHAS = [0.12, 0.25, 0.4];
@@ -26,7 +22,7 @@ export function GhostTrail({ history }: GhostTrailProps) {
   return (
     <svg
       className="pointer-events-none absolute inset-0 h-full w-full"
-      viewBox="0 0 100 100"
+      viewBox="0 0 220 110"
       preserveAspectRatio="none"
       aria-hidden
     >
@@ -35,12 +31,15 @@ export function GhostTrail({ history }: GhostTrailProps) {
         const age = history.length - 1 - idx;
         const alpha = ALPHAS[ALPHAS.length - 1 - age] ?? 0.1;
         return (
-          <circle
+          <rect
             key={`${pos.col}-${pos.row}-${idx}`}
-            cx={x}
-            cy={y}
-            r={1.1}
-            fill={`rgba(250, 204, 21, ${alpha})`}
+            x={x - 1.2}
+            y={y - 1.2}
+            width={2.4}
+            height={2.4}
+            fill="var(--pitch-trail, #facc15)"
+            opacity={alpha}
+            transform={`rotate(45 ${x} ${y})`}
             vectorEffect="non-scaling-stroke"
           />
         );
@@ -48,4 +47,3 @@ export function GhostTrail({ history }: GhostTrailProps) {
     </svg>
   );
 }
-

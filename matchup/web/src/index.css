@@ -223,9 +223,18 @@
 }
 
 :root {
-    --pitch-bg: #1B5E35;
-    --pitch-line: rgba(255, 255, 255, 0.15);
-    --pitch-highlight: rgba(148, 246, 196, 0.4);
+    --pitch-bg: #1a6b37;
+    --pitch-line: rgba(255, 255, 255, 0.35);
+    --pitch-border: rgba(255, 255, 255, 0.25);
+    --pitch-stripe: rgba(255, 255, 255, 0.018);
+    --pitch-highlight: rgba(250, 204, 21, 0.18);
+    --pitch-snap: rgba(250, 204, 21, 0.5);
+    --pitch-snap-border: rgba(250, 204, 21, 0.85);
+    --pitch-goal-cell: rgba(255, 255, 255, 0.06);
+    --pitch-trail: #facc15;
+    --pitch-lane-clear: rgba(34, 197, 94, 0.8);
+    --pitch-lane-risk: rgba(251, 191, 36, 0.8);
+    --pitch-lane-blocked: rgba(239, 68, 68, 0.8);
 }
 
 .dark {
@@ -286,6 +295,7 @@
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.75 0.12 200);
 }
+
 .ferrous {
     --pitch-bg: #0d1a14;
     --pitch-line: rgba(0, 243, 255, 0.15);
@@ -326,6 +336,7 @@
     --sidebar-border: oklch(0 0 0);
     --sidebar-ring: oklch(0 0 0);
 }
+
 .skeleton {
     --pitch-bg: #2d5a27;
     --pitch-line: rgba(0, 0, 0, 0.3);
@@ -333,40 +344,85 @@
 }
 
 @keyframes pulse {
-    0%, 100% { box-shadow: 0 0 0 3px #94F6C4; }
-    50% { box-shadow: 0 0 0 5px #94F6C480; }
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 3px #94F6C4;
+    }
+
+    50% {
+        box-shadow: 0 0 0 5px #94F6C480;
+    }
 }
 
 @keyframes tackle-fail {
-    0%   { transform: translate(0, 0); opacity: 1; }
-    25%  { transform: translate(4px, 0); opacity: 1; }
-    50%  { transform: translate(-3px, 0); opacity: 0.6; }
-    75%  { transform: translate(1px, 0); opacity: 0.85; }
-    100% { transform: translate(0, 0); opacity: 1; }
+    0% {
+        transform: translate(0, 0);
+        opacity: 1;
+    }
+
+    25% {
+        transform: translate(4px, 0);
+        opacity: 1;
+    }
+
+    50% {
+        transform: translate(-3px, 0);
+        opacity: 0.6;
+    }
+
+    75% {
+        transform: translate(1px, 0);
+        opacity: 0.85;
+    }
+
+    100% {
+        transform: translate(0, 0);
+        opacity: 1;
+    }
 }
 
 @keyframes tackle-success {
-    0%   { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.9); }
-    50%  { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.55); }
-    100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+    0% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.9);
+    }
+
+    50% {
+        box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.55);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+    }
 }
 
 @keyframes tackle-zone-pulse {
-    0%, 100% { opacity: 0.35; }
-    50%      { opacity: 0.75; }
+
+    0%,
+    100% {
+        opacity: 0.35;
+    }
+
+    50% {
+        opacity: 0.75;
+    }
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
+    * {
+        @apply border-border outline-ring/50;
     }
-  body {
-    @apply bg-background text-foreground;
+
+    body {
+        @apply bg-background text-foreground;
     }
-  button:not(:disabled), [role="button"]:not(:disabled) {
-    cursor: pointer;
+
+    button:not(:disabled),
+    [role="button"]:not(:disabled) {
+        cursor: pointer;
     }
-  html {
-    @apply font-sans;
+
+    html {
+        @apply font-sans;
     }
 }

@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import {
   type GameState,
   type Player,
-  ROWS,
   rowToNum,
   getPassTargets,
 } from '@/lib/engine';
@@ -12,21 +11,12 @@ interface PassingLanesProps {
   selectedPlayerId: string | null;
 }
 
-const COLS_COUNT = 22;
-const ROWS_COUNT = ROWS.length;
-
 function cellCenter(col: number, row: string): { x: number; y: number } {
-  const x = ((col - 0.5) / COLS_COUNT) * 100;
-  const rIdx = rowToNum(row);
-  const y = ((rIdx + 0.5) / ROWS_COUNT) * 100;
-  return { x, y };
+  return {
+    x: (col - 0.5) * 10,
+    y: (rowToNum(row) + 0.5) * 10,
+  };
 }
-
-const STROKE_BY_RISK = {
-  clear: 'rgba(34, 197, 94, 0.85)',
-  risk: 'rgba(255, 179, 0, 0.85)',
-  blocked: 'rgba(225, 29, 72, 0.85)',
-} as const;
 
 export function PassingLanes({ state, selectedPlayerId }: PassingLanesProps) {
   const carrier = useMemo<Player | null>(() => {
@@ -48,7 +38,7 @@ export function PassingLanes({ state, selectedPlayerId }: PassingLanesProps) {
   return (
     <svg
       className="pointer-events-none absolute inset-0 h-full w-full"
-      viewBox="0 0 100 100"
+      viewBox="0 0 220 110"
       preserveAspectRatio="none"
       aria-hidden
     >
@@ -56,15 +46,29 @@ export function PassingLanes({ state, selectedPlayerId }: PassingLanesProps) {
         let endCol = t.to.col;
         let endRow = t.to.row;
         if (t.lineRisk === 'blocked' && t.interceptorId) {
-          const interceptor = state.players.find((p) => p.id === t.interceptorId);
+          const interceptor = state.players.find(
+            (p) => p.id === t.interceptorId,
+          );
           if (interceptor) {
             endCol = interceptor.position.col;
             endRow = interceptor.position.row;
           }
         }
         const to = cellCenter(endCol, endRow);
-        const stroke = STROKE_BY_RISK[t.lineRisk];
-        const dasharray = t.lineRisk === 'blocked' ? '1.2 0.8' : undefined;
+
+        const stroke =
+          t.lineRisk === 'blocked'
+            ? 'var(--pitch-lane-blocked, rgba(239,68,68,0.8))'
+            : t.lineRisk === 'risk'
+              ? 'var(--pitch-lane-risk, rgba(251,191,36,0.8))'
+              : 'var(--pitch-lane-clear, rgba(34,197,94,0.8))';
+
+        const dasharray =
+          t.lineRisk === 'blocked'
+            ? '2 2'
+            : t.lineRisk === 'risk'
+              ? '4 2'
+              : undefined;
 
         return (
           <g key={t.playerId}>
@@ -74,17 +78,18 @@ export function PassingLanes({ state, selectedPlayerId }: PassingLanesProps) {
               x2={to.x}
               y2={to.y}
               stroke={stroke}
-              strokeWidth={0.6}
-              strokeLinecap="round"
+              strokeWidth={0.55}
+              strokeLinecap="square"
               strokeDasharray={dasharray}
               vectorEffect="non-scaling-stroke"
-              opacity={0.85}
             />
-            <circle
-              cx={to.x}
-              cy={to.y}
-              r={0.9}
+            <rect
+              x={to.x - 1}
+              y={to.y - 1}
+              width={2}
+              height={2}
               fill={stroke}
+              transform={`rotate(45 ${to.x} ${to.y})`}
               vectorEffect="non-scaling-stroke"
             />
           </g>

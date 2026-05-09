@@ -26,12 +26,20 @@ const OUTCOME_STYLE: Record<Outcome, OutcomeStyle> = {
 export function MoveResultBar({ result }: MoveResultBarProps) {
   const [visible, setVisible] = useState(false);
 
+  // Synchronously show the bar when a new result arrives
+  const [lastResult, setLastResult] = useState(result);
+  if (result !== lastResult) {
+    setLastResult(result);
+    if (result) {
+      setVisible(true);
+    }
+  }
+
   useEffect(() => {
-    if (!result) return;
-    setVisible(true);
+    if (!visible) return;
     const timer = setTimeout(() => setVisible(false), 2000);
     return () => clearTimeout(timer);
-  }, [result]);
+  }, [visible]);
 
   if (!result || !visible) return null;
 

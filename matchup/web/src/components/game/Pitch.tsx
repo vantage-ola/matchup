@@ -13,6 +13,7 @@ import { PassingLanes } from './PassingLanes';
 import { GhostTrail } from './GhostTrail';
 import { InterceptionFlash } from './InterceptionFlash';
 import { TackleZones } from './TackleZones';
+import { PitchMarkings } from './PitchMarkings';
 
 interface PitchProps {
   state: GameState;
@@ -66,7 +67,8 @@ export function Pitch({
     return map;
   }, [state.players]);
 
-  const compact = typeof window !== 'undefined' && window.innerWidth < 500;
+  const compact =
+    typeof window !== 'undefined' && window.innerWidth < 500;
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{
@@ -78,7 +80,10 @@ export function Pitch({
   } | null>(null);
   const [snapTarget, setSnapTarget] = useState<GridPosition | null>(null);
   const [dragOrigin, setDragOrigin] = useState<GridPosition | null>(null);
-  const [cursorPos, setCursorPos] = useState<{ col: number; rowIdx: number } | null>(null);
+  const [cursorPos, setCursorPos] = useState<{
+    col: number;
+    rowIdx: number;
+  } | null>(null);
 
   const handleCellClick = (col: number, row: string) => {
     const posKey = posToString({ col, row });
@@ -97,15 +102,17 @@ export function Pitch({
     onDeselect();
   };
 
-  // ── Keyboard navigation ──────────────────────────────────────
+  // ── Keyboard navigation ──────────────────────────────
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (isAiThinking) return;
 
       const rows = ROWS as readonly string[];
 
-      // Initialise cursor at center if not set
-      if (!cursorPos && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+      if (
+        !cursorPos &&
+        ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)
+      ) {
         setCursorPos({ col: 11, rowIdx: 5 });
         e.preventDefault();
         return;
@@ -148,33 +155,52 @@ export function Pitch({
         setCursorPos({ col, rowIdx });
       }
 
-      // Tab to cycle through team's players
       if (e.key === 'Tab') {
         e.preventDefault();
         const teamPlayers = state.players
           .filter((p) => p.team === state.possession)
-          .sort((a, b) => a.position.col - b.position.col || a.position.row.localeCompare(b.position.row));
+          .sort(
+            (a, b) =>
+              a.position.col - b.position.col ||
+              a.position.row.localeCompare(b.position.row),
+          );
         if (teamPlayers.length === 0) return;
 
         const currentIdx = selectedPlayerId
           ? teamPlayers.findIndex((p) => p.id === selectedPlayerId)
           : -1;
-        const nextIdx = (currentIdx + (e.shiftKey ? -1 : 1) + teamPlayers.length) % teamPlayers.length;
+        const nextIdx =
+          (currentIdx + (e.shiftKey ? -1 : 1) + teamPlayers.length) %
+          teamPlayers.length;
         const next = teamPlayers[nextIdx];
         onSelectPlayer(next.id);
         const ri = rows.indexOf(next.position.row);
         setCursorPos({ col: next.position.col, rowIdx: ri >= 0 ? ri : 5 });
       }
     },
-    [isAiThinking, cursorPos, state, selectedPlayerId, selectedPlayerMoves, onSelectPlayer, onDeselect, handleCellClick],
+    [
+      isAiThinking,
+      cursorPos,
+      state,
+      selectedPlayerId,
+      selectedPlayerMoves,
+      onSelectPlayer,
+      onDeselect,
+      handleCellClick,
+    ],
   );
 
-  const findNearestTarget = (clientX: number, clientY: number): GridPosition | null => {
+  const findNearestTarget = (
+    clientX: number,
+    clientY: number,
+  ): GridPosition | null => {
     const el = containerRef.current;
     if (!el || selectedPlayerMoves.size === 0) return null;
     const rect = el.getBoundingClientRect();
-    const px = ((clientX - rect.left) / rect.width) * COLS_COUNT + 0.5;
-    const py = ((clientY - rect.top) / rect.height) * ROWS_COUNT + 0.5;
+    const px =
+      ((clientX - rect.left) / rect.width) * COLS_COUNT + 0.5;
+    const py =
+      ((clientY - rect.top) / rect.height) * ROWS_COUNT + 0.5;
 
     let best: { pos: GridPosition; dist: number } | null = null;
     for (const key of selectedPlayerMoves) {
@@ -187,16 +213,20 @@ export function Pitch({
     return best?.pos ?? null;
   };
 
-  const handlePlayerPointerDown = (player: Player, e: React.PointerEvent) => {
+  const handlePlayerPointerDown = (
+    player: Player,
+    e: React.PointerEvent,
+  ) => {
     if (isAiThinking) return;
     if (player.team !== state.possession) return;
     if (e.button !== 0 && e.pointerType === 'mouse') return;
 
-    // If this teammate is a valid destination (e.g. a pass) for the currently
-    // selected player, leave selection alone and let the click handler commit
-    // the move on pointer-up. Don't start a drag from the receiver.
     const posKey = posToString(player.position);
-    if (selectedPlayerId && selectedPlayerId !== player.id && selectedPlayerMoves.has(posKey)) {
+    if (
+      selectedPlayerId &&
+      selectedPlayerId !== player.id &&
+      selectedPlayerMoves.has(posKey)
+    ) {
       return;
     }
 
@@ -248,20 +278,22 @@ export function Pitch({
 
   const dragLine = (() => {
     if (!dragOrigin || !snapTarget) return null;
-    const x1 = ((dragOrigin.col - 0.5) / COLS_COUNT) * 100;
-    const y1 = ((rowToNum(dragOrigin.row) + 0.5) / ROWS_COUNT) * 100;
-    const x2 = ((snapTarget.col - 0.5) / COLS_COUNT) * 100;
-    const y2 = ((rowToNum(snapTarget.row) + 0.5) / ROWS_COUNT) * 100;
-    return { x1, y1, x2, y2 };
+    return {
+      x1: (dragOrigin.col - 0.5) * 10,
+      y1: (rowToNum(dragOrigin.row) + 0.5) * 10,
+      x2: (snapTarget.col - 0.5) * 10,
+      y2: (rowToNum(snapTarget.row) + 0.5) * 10,
+    };
   })();
 
   return (
     <div
       ref={containerRef}
-      className="relative w-full overflow-hidden border border-border outline-none"
+      className="relative w-full overflow-hidden outline-none"
       style={{
         aspectRatio: '22 / 11',
         backgroundColor: 'var(--pitch-bg)',
+        border: '1px solid var(--pitch-border, var(--pitch-line))',
         touchAction: 'none',
       }}
       role="grid"
@@ -272,6 +304,7 @@ export function Pitch({
       onPointerUp={(e) => endDrag(e, true)}
       onPointerCancel={(e) => endDrag(e, false)}
     >
+      {/* ── Cell grid (invisible hit targets) ─────────── */}
       <div
         className="grid h-full w-full"
         style={{
@@ -290,14 +323,11 @@ export function Pitch({
               snapTarget.col === col &&
               snapTarget.row === row;
             const goal = isGoalCell(col, row);
-            const isCenterLine = col === 11 || col === 12;
-
             const isCursorHere =
               cursorPos !== null &&
               cursorPos.col === col &&
               ROWS[cursorPos.rowIdx] === row;
 
-            // Build aria-label for screen readers
             const ariaLabel = player
               ? `Row ${row}, Column ${col}, ${player.team} ${player.role.toUpperCase()}${player.hasBall ? ' with ball' : ''}`
               : `Row ${row}, Column ${col}${isValid ? ', valid move' : ''}${goal ? `, ${goal} goal` : ''}`;
@@ -310,16 +340,25 @@ export function Pitch({
                 onClick={() => handleCellClick(col, row)}
                 className="relative flex items-center justify-center"
                 style={{
-                  borderRight: isCenterLine && col === 11 ? '1px solid var(--pitch-line)' : undefined,
                   backgroundColor: isSnapped
-                    ? 'var(--pitch-snap, rgba(250, 204, 21, 0.55))'
+                    ? 'var(--pitch-snap, rgba(250,204,21,0.5))'
                     : isValid
-                    ? 'var(--pitch-highlight)'
-                    : goal
-                    ? 'rgba(255,255,255,0.08)'
+                      ? 'var(--pitch-highlight)'
+                      : goal
+                        ? 'var(--pitch-goal-cell, rgba(255,255,255,0.06))'
+                        : rowToNum(row) % 2 === 0
+                          ? 'var(--pitch-stripe, rgba(255,255,255,0.018))'
+                          : undefined,
+                  cursor:
+                    isValid ||
+                      (player &&
+                        player.team === state.possession &&
+                        !isAiThinking)
+                      ? 'pointer'
+                      : 'default',
+                  outline: isCursorHere
+                    ? '2px dashed var(--pitch-snap-border, rgba(250,204,21,0.85))'
                     : undefined,
-                  cursor: isValid || (player && player.team === state.possession && !isAiThinking) ? 'pointer' : 'default',
-                  outline: isCursorHere ? '2px dashed var(--pitch-snap-border, rgba(250, 204, 21, 0.9))' : undefined,
                   outlineOffset: '-1px',
                   zIndex: isCursorHere ? 5 : undefined,
                 }}
@@ -331,16 +370,22 @@ export function Pitch({
                     isCurrent={player.team === state.possession}
                     compact={compact}
                     tackleFailed={player.id === failedTacklerId}
-                    onPointerDown={(e) => handlePlayerPointerDown(player, e)}
+                    onPointerDown={(e) =>
+                      handlePlayerPointerDown(player, e)
+                    }
                     onClick={() => {
-                      // If this cell is a valid destination for the currently-selected
-                      // player (e.g. a pass to this teammate), execute the move instead
-                      // of re-selecting the token under the pointer.
-                      if (selectedPlayerId && selectedPlayerId !== player.id && isValid) {
+                      if (
+                        selectedPlayerId &&
+                        selectedPlayerId !== player.id &&
+                        isValid
+                      ) {
                         onExecuteMove(selectedPlayerId, { col, row });
                         return;
                       }
-                      if (player.team === state.possession && !isAiThinking) {
+                      if (
+                        player.team === state.possession &&
+                        !isAiThinking
+                      ) {
                         onSelectPlayer(player.id);
                       }
                     }}
@@ -348,21 +393,23 @@ export function Pitch({
                 )}
               </div>
             );
-          })
+          }),
         )}
       </div>
 
-      <GhostTrail history={ballHistory} />
+      {/* ── SVG overlay layers (bottom → top) ─────────── */}
+      <PitchMarkings />
+      {showTackleZones && <TackleZones state={state} />}
       {showPassingLanes && (
         <PassingLanes state={state} selectedPlayerId={selectedPlayerId} />
       )}
-      {showTackleZones && <TackleZones state={state} />}
+      <GhostTrail history={ballHistory} />
       <InterceptionFlash result={lastMoveResult} />
 
       {dragLine && (
         <svg
           className="pointer-events-none absolute inset-0 h-full w-full"
-          viewBox="0 0 100 100"
+          viewBox="0 0 220 110"
           preserveAspectRatio="none"
           aria-hidden
         >
@@ -371,47 +418,22 @@ export function Pitch({
             y1={dragLine.y1}
             x2={dragLine.x2}
             y2={dragLine.y2}
-            stroke="var(--pitch-snap-border, rgba(250, 204, 21, 0.95))"
-            strokeWidth={0.9}
-            strokeLinecap="round"
+            stroke="var(--pitch-snap-border, rgba(250,204,21,0.9))"
+            strokeWidth={0.8}
+            strokeLinecap="square"
             vectorEffect="non-scaling-stroke"
           />
-          <circle
-            cx={dragLine.x2}
-            cy={dragLine.y2}
-            r={1.4}
-            fill="var(--pitch-snap-border, rgba(250, 204, 21, 0.95))"
+          <rect
+            x={dragLine.x2 - 1.2}
+            y={dragLine.y2 - 1.2}
+            width={2.4}
+            height={2.4}
+            fill="var(--pitch-snap-border, rgba(250,204,21,0.9))"
+            transform={`rotate(45 ${dragLine.x2} ${dragLine.y2})`}
             vectorEffect="non-scaling-stroke"
           />
         </svg>
       )}
-
-      {/* Field markings */}
-      <div className="pointer-events-none absolute inset-0">
-        {/* Center circle */}
-        <div
-          className="absolute rounded-full border"
-          style={{
-            width: '12%',
-            height: '24%',
-            left: '44%',
-            top: '38%',
-            borderColor: 'var(--pitch-line)',
-          }}
-        />
-        {/* Center dot */}
-        <div
-          className="absolute rounded-full"
-          style={{
-            width: 6,
-            height: 6,
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)',
-            backgroundColor: 'var(--pitch-line)',
-          }}
-        />
-      </div>
     </div>
   );
 }
