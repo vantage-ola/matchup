@@ -14,19 +14,19 @@ interface SettingsSheetProps {
 }
 
 const DIFFICULTIES: { value: Difficulty; label: string; desc: string }[] = [
-  { value: 'easy', label: 'EASY', desc: 'AI plays safe, rarely shoots' },
-  { value: 'normal', label: 'NORMAL', desc: 'Balanced aggression' },
-  { value: 'hard', label: 'HARD', desc: 'Tactical AI, minimizes risk' },
+  { value: 'easy', label: 'EASY', desc: '' },
+  { value: 'normal', label: 'NORMAL', desc: '' },
+  { value: 'hard', label: 'HARD', desc: '' },
 ];
 
 const THEMES = [
-  { name: 'light', label: 'Light', swatch: '#ffffff' },
-  { name: 'dark', label: 'Dark', swatch: '#1a1a1a' },
-  { name: 'high-contrast', label: 'Contrast', swatch: '#064e3b' },
-  { name: 'night-mode', label: 'Night', swatch: '#2a1f0f' },
-  { name: 'pitch-dark', label: 'Pitch Dark', swatch: '#050505' },
-  { name: 'ferrous', label: 'Ferrous', swatch: '#0a0a0a' },
-  { name: 'skeleton', label: 'Skeleton', swatch: '#f3f3f3' },
+  { name: 'light', label: 'Light', icon: '☀' },
+  { name: 'dark', label: 'Dark', icon: '☾' },
+  { name: 'high-contrast', label: 'Contrast', icon: '◐' },
+  { name: 'night-mode', label: 'Night', icon: '☁' },
+  { name: 'pitch-dark', label: 'Pitch Dark', icon: '●' },
+  { name: 'ferrous', label: 'Ferrous', icon: '⬡' },
+  { name: 'skeleton', label: 'Skeleton', icon: '△' },
 ];
 
 export function SettingsSheet({ onBack }: SettingsSheetProps) {
@@ -59,6 +59,7 @@ export function SettingsSheet({ onBack }: SettingsSheetProps) {
             onValueChange={(val) => { if (val.length > 0) patch({ difficulty: val[val.length - 1] as Difficulty }); }}
             variant="outline"
             className="grid w-full grid-cols-3 gap-1.5"
+            spacing={1}
           >
             {DIFFICULTIES.map((d) => (
               <ToggleGroupItem
@@ -112,6 +113,7 @@ export function SettingsSheet({ onBack }: SettingsSheetProps) {
             onValueChange={(val) => { if (val.length > 0) setTheme(val[val.length - 1]); }}
             variant="outline"
             className="flex flex-wrap gap-2"
+            spacing={2}
           >
             {THEMES.map((t) => (
               <ToggleGroupItem
@@ -119,10 +121,7 @@ export function SettingsSheet({ onBack }: SettingsSheetProps) {
                 value={t.name}
                 className="flex items-center gap-2 px-3 py-2 text-[11px] font-semibold"
               >
-                <span
-                  className="inline-block h-3.5 w-3.5 rounded-full border border-foreground/20"
-                  style={{ backgroundColor: t.swatch }}
-                />
+                <span className="text-sm leading-none opacity-80">{t.icon}</span>
                 {t.label}
               </ToggleGroupItem>
             ))}
