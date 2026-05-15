@@ -58,6 +58,7 @@ export function RulebookContent() {
             label="Tackle"
             value="1 cell"
             note="Step onto the carrier"
+            className="col-span-2"
           />
         </div>
       </div>
@@ -169,13 +170,15 @@ function MoveCard({
   label,
   value,
   note,
+  className,
 }: {
   label: string;
   value: string;
   note: string;
+  className?: string;
 }) {
   return (
-    <div className="rounded border border-border px-2.5 py-2">
+    <div className={`rounded border border-border px-2.5 py-2 ${className ?? ''}`}>
       <div className="text-[11px] font-bold uppercase tracking-wide">
         {label}
       </div>
