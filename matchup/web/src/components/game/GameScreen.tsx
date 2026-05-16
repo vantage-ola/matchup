@@ -73,7 +73,7 @@ export function GameScreen({
 
   const turnLabel = mode === 'ai'
     ? (state.possession === 'home' ? 'Your turn' : 'AI thinking...')
-    : (state.possession === 'home' ? 'Home turn' : 'Away turn');
+    : (state.possession === 'home' ? 'P1 turn' : 'P2 turn');
 
   const animTacklerId =
     lastMoveResult?.outcome === 'tackleFailed' && lastMoveResult.move
@@ -205,7 +205,7 @@ export function GameScreen({
         <div className="hidden md:flex flex-col w-[30%] min-w-[260px] shrink-0 border-l border-border pl-4 animate-in fade-in slide-in-from-right-4 duration-300">
           <div className="flex min-h-[5rem] items-center justify-center rounded-lg bg-card border border-border p-4 text-center">
             <p className="text-sm font-bold tracking-wider uppercase text-card-foreground">
-            {isAiThinking ? (
+            {mode === 'ai' && isAiThinking ? (
               <span className="animate-pulse">AI thinking...</span>
             ) : selectedPlayerId ? (
               <span>Tap highlighted cell to move</span>

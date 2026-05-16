@@ -42,7 +42,7 @@ export function HistoryScreen({ onBack, onReplay }: HistoryScreenProps) {
         )}
 
         {!loading && history.length === 0 && (
-          <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
+          <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
             <Trophy size={32} className="text-muted-foreground/40" />
             <p className="text-sm text-muted-foreground">No matches yet. Go play one!</p>
           </div>
